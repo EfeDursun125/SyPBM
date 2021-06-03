@@ -1,5 +1,5 @@
 # About The Project
-SyPB Modification is based on SyPB 1.48, in SyPB 1.49 - 1.50 versions ~~actionforenemy task crashes the game~~ SelectBestWeapon void crashes the game. (tested)
+SyPB Modification is based on SyPB 1.48, in SyPB 1.49 - 1.50 versions has a crash problem.
 
 The Developer of the SyPB doesn't have time for develop anymore, original project is so large.
 
