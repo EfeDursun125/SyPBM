@@ -3,15 +3,20 @@ SyPB Modification is based on SyPB 1.48, in SyPB 1.49 - 1.50 versions has a cras
 
 The Developer of the SyPB doesn't have time for develop anymore, original project is so large.
 
-# SyPBM changes
-- Human bots vision is downgraded if "zp_lighting / bh_lights = a" (untested)
-- Human bots now always goes to random zp camp waypoints.
-- Human bots will no longer use aimbot in zombie mode.
-- Biohazard (zombie mod) support.
-- Performance optimizations.
-- Reworked aim system.
-- Lowered CPU usage.
-- AI Improvements.
+# Last SyPBM changes
+- Human AI improve
+- Human bots now can use granades
+- Human bots now avoid zombies while pathing
+- Human bots now faster aim in zombie mode (based skill)
+- Zombie AI improve
+- Zombie bots now can boost other zombies for reach high ground (use zombie boosting path for waypoints)
+- Zombie bots now can use different paths for reach humans
+- Zombie bots increased attack range
+- New Avoid waypoints, bots will mostly avoid these waypoints, use that for danger areas (fire, water, breakable ground, high falls)
+- No hostage waypoint is removed, bots will never use crouch & ladder & jump waypoints if they have hostages
+- Bots will don't use enemy team important waypoints
+- Now jump path can usable in "Create Path" menu
+- AI Improvements
 
 # How to install
 1. You must have original sypb & metamod.
