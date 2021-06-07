@@ -273,8 +273,8 @@ MenuText g_menus[26] =
 	// main menu
 	{
 		0x2ff,
-		"\\ySyPB Main Menu\\w\v\v"
-		"1. SyPB Control\v"
+		"\\ySyPBM Main Menu\\w\v\v"
+		"1. SyPBM Control\v"
 		"2. Features\v\v"
 		"3. Fill Server\v"
 		"4. End Round\v\v"
@@ -284,7 +284,7 @@ MenuText g_menus[26] =
 	// bot features menu
 	{
 		0x25f,
-		"\\ySyPB Features\\w\v\v"
+		"\\ySyPBM Features\\w\v\v"
 		"1. Weapon Mode Menu\v"
 		"2. Waypoint Menu\v"
 		"3. Select Personality\v\v"
@@ -296,7 +296,7 @@ MenuText g_menus[26] =
 	// bot control menu
 	{
 		0x2ff,
-		"\\ySyPB Control Menu\\w\v\v"
+		"\\ySyPBM Control Menu\\w\v\v"
 		"1. Add a Bot, Quick\v"
 		"2. Add a Bot, Specified\v\v"
 		"3. Remove Random Bot\v"
@@ -333,13 +333,13 @@ MenuText g_menus[26] =
 	// skill select menu
 	{
 		0x23f,
-		"\\ySyPB Skill Level\\w\v\v"
-		"1. Stupid (0-20)\v"
-		"2. Newbie (20-40)\v"
-		"3. Average (40-60)\v"
-		"4. Advanced (60-80)\v"
-		"5. Professional (80-99)\v"
-		"6. Godlike (100)\v\v"
+		"\\ySyPBM Skill Level\\w\v\v"
+		"1. Poor (0-20)\v"
+		"2. Easy (20-40)\v"
+		"3. Normal (40-60)\v"
+		"4. Hard (60-80)\v"
+		"5. Expert (80-99)\v"
+		"6. Legendary (100)\v\v"
 		"0. Exit"
 	},
 
@@ -432,10 +432,10 @@ MenuText g_menus[26] =
 		"1. Normal\v"
 		"\\r2. Terrorist Important\v"
 		"3. Counter-Terrorist Important\v"
-		"\\w4. Block with hostage / Ladder\v"
+		"\\w4. Avoid\v"
 		"\\y5. Rescue Zone\v"
 		"\\w6. Camping\v"
-		"7. Camp End\v"
+		"7. Camp End / Human Camp Aim Direction\v"
 		"\\r8. Map Goal\v"
 		"\\w9. Jump\v\v"
 		"0. Exit"
@@ -445,13 +445,14 @@ MenuText g_menus[26] =
 	{
 		0x3ff,
 		"\\yToggle Waypoint Flags\\w\v\v"
-		"1. Block with Hostage\v"
+		"1. Avoid\v"
 		"2. Terrorists Specific\v"
 		"3. CTs Specific\v"
 		"4. Use Elevator\v"
 		"5. Sniper Point (\\yFor Camp Points Only!\\w)\v"
 		"6. Zombie Mode Camp\v"
-		"7. Crouch\v\v"
+		"7. Crouch\v"
+		"8. Use button\v\v"
 		"9. Delete All Flags\v"
 		"0. Exit"
 	},
@@ -512,8 +513,10 @@ MenuText g_menus[26] =
 		"\\yCreate Path (Choose Direction)\\w\v\v"
 		"1. Outgoing Path\v"
 		"2. Incoming Path\v"
-		"3. Bidirectional (Both Ways)\v\v"
-		"4. Delete Path\v"
+		"3. Bidirectional (Both Ways)\v"
+		"4. Jump Path\v"
+		"5. Zombie Boosting Path\v\v"
+		"6. Delete Path\v"
 		"\v0. Exit"
 	},
 
@@ -538,7 +541,7 @@ MenuText g_menus[26] =
 		"1. Normal\v"
 		"2. Terrorist Important\v"
 		"3. Counter-Terrorist Important\v"
-		"4. Block with hostage / Ladder\v"
+		"4. Avoid\v"
 		"5. Rescue Zone\v"
 		"6. Map Goal\v"
 		"7. Camp\v"

@@ -33,9 +33,10 @@ int Bot::GetNearbyFriendsNearPosition (Vector origin, int radius)
       if (!(g_clients[i].flags & CFLAG_USED) || !(g_clients[i].flags & CFLAG_ALIVE) || g_clients[i].team != team || g_clients[i].ent == GetEntity ())
          continue;
 
-      if ((g_clients[i].origin - origin).GetLengthSquared () < static_cast <float> (radius * radius))
+      if ((g_clients[i].origin - origin).GetLengthSquared() < static_cast <float> (radius * radius))
          count++;
    }
+
    return count;
 }
 
@@ -48,9 +49,10 @@ int Bot::GetNearbyEnemiesNearPosition (Vector origin, int radius)
       if (!(g_clients[i].flags & CFLAG_USED) || !(g_clients[i].flags & CFLAG_ALIVE) || g_clients[i].team == team)
          continue;
 
-      if ((g_clients[i].origin - origin).GetLengthSquared () < static_cast <float> (radius * radius))
+      if ((g_clients[i].origin - origin).GetLengthSquared() < static_cast <float> (radius * radius))
          count++;
    }
+
    return count;
 }
 
@@ -1164,14 +1166,6 @@ void Bot::CombatFight(void)
 
 	m_destOrigin = GetEntityOrigin(m_enemy);
 
-	// SyPBM 1.50 - We don't have chance
-	if (GetGameMod() != MODE_ZP && GetGameMod() != MODE_ZH && (m_isReloading || pev->health < (m_enemy->v.health / 1.5)))
-	{
-		GetCurrentTask()->taskID = TASK_SEEKCOVER;
-		GetCurrentTask()->canContinue = true;
-		GetCurrentTask()->desire = TASKPRI_FIGHTENEMY + 2.0f;
-	}
-
 	// SyPB Pro P.47 - Attack Ai improve
 	if ((m_moveSpeed != 0.0f || m_strafeSpeed != 0.0f) &&
 		m_currentWaypointIndex != -1 && g_waypoint->GetPath(m_currentWaypointIndex)->flags & WAYPOINT_CROUCH &&
@@ -1182,7 +1176,19 @@ void Bot::CombatFight(void)
 	if (IsZombieEntity(GetEntity()))
 	{
 		m_moveSpeed = pev->maxspeed;
+
+		if ((pev->origin - m_destOrigin).GetLength() < 100.0)
+			pev->button |= IN_ATTACK;
+
 		return;
+	}
+
+	// SyPBM 1.50 - We don't have chance
+	if (GetGameMod() != MODE_ZP && GetGameMod() != MODE_ZH && (m_isReloading || (pev->health + 20) < m_enemy->v.health))
+	{
+		GetCurrentTask()->taskID = TASK_SEEKCOVER;
+		GetCurrentTask()->canContinue = true;
+		GetCurrentTask()->desire = TASKPRI_FIGHTENEMY + 2.0f;
 	}
 
 	m_timeWaypointMove = 0.0f;
@@ -1207,30 +1213,35 @@ void Bot::CombatFight(void)
 				else
 					baseDistance = -1.0f;
 			}
+			else if(UsesSniper() || m_isReloading)
+				baseDistance = viewCone ? 700.0f : 350.0f;
 			else if (m_currentWeapon == WEAPON_XM1014 || m_currentWeapon == WEAPON_M3)
-				baseDistance = viewCone ? 350.0f : 220.0f;
-			else if (UsesSniper())
-				baseDistance = viewCone ? 600.0f : 400.0f;
+				baseDistance = viewCone ? 500.0f : 250.0f;
 			else
-				baseDistance = viewCone ? 400.0f : 300.0f;
+				baseDistance = viewCone ? 600.0f : 300.0f;
 
 			if (viewCone && !NPCEnemy)
 			{
 				const int haveEnemy = GetNearbyEnemiesNearPosition(GetEntityOrigin(m_enemy), 512);
-				if (enemyIsZombie && m_currentWeapon == WEAPON_KNIFE && haveEnemy >= 3)
-					baseDistance = 450.0f;
-				else if (haveEnemy >= 6)
-					baseDistance += 120.0f;
-				else if (haveEnemy >= 3)
+
+				baseDistance += haveEnemy;
+
+				if (m_zpgrenadetimer < engine->GetTime())
 				{
-					baseDistance += 70.0f;
+					if (distance <= 1024.0f && engine->RandomInt(1, 100) <= (6 * haveEnemy))
+						if(engine->RandomInt(1, 2) == 1)
+							ThrowFrostNade();
+						else
+							ThrowFireNade();
+
+					m_zpgrenadetimer = engine->GetTime() + engine->RandomFloat(1.0f, 2.0f);
 				}
 			}
 
 			if (baseDistance != -1.0f)
 			{
 				// SyPB Pro P.38 - Zomibe Mode Attack Ai small improve
-				if (m_reloadState != RSTATE_NONE)
+				/*if (m_reloadState != RSTATE_NONE)
 					baseDistance *= 1.5f;
 				else if (m_currentWeapon != WEAPON_KNIFE)
 				{
@@ -1244,16 +1255,14 @@ void Bot::CombatFight(void)
 						baseDistance *= 1.4f;
 					else if (m_ammoInClip[weaponIndex] < (maxClip * 0.6))
 						baseDistance *= 1.2f;
-				}
+				}*/ // SyPBM 1.51 - this makes bots stuck or fall from the highground.
 
 				if (distance <= baseDistance)
 				{
+					DeleteSearchNodes();
 					m_destOrigin = GetEntityOrigin(m_enemy);
 					m_moveSpeed = -pev->maxspeed;
-				}
-				else if (distance < (baseDistance + 100.0f))
-				{
-					ThrowGrenadeZP();
+					m_checkFall = true;
 				}
 			}
 			else
@@ -1341,6 +1350,7 @@ void Bot::CombatFight(void)
 					else
 						m_fightStyle = 0;
 				}
+
 				m_lastFightStyleCheck = engine->GetTime();
 			}
 		}
@@ -1564,14 +1574,16 @@ bool Bot::UsesBadPrimary (void)
    return m_currentWeapon == WEAPON_XM1014 || m_currentWeapon == WEAPON_M3 || m_currentWeapon == WEAPON_UMP45 || m_currentWeapon == WEAPON_MAC10 || m_currentWeapon == WEAPON_TMP || m_currentWeapon == WEAPON_P90;
 }
 
-void Bot::ThrowGrenadeZP(void)
+void Bot::ThrowFireNade(void)
 {
 	if (pev->weapons & (1 << WEAPON_HEGRENADE))
-		PushTask(TASK_THROWHEGRENADE, TASKPRI_THROWGRENADE, -1, engine->RandomFloat(1.25f, 2.0f), false);
-	else if (pev->weapons & (1 << WEAPON_FBGRENADE))
-		PushTask(TASK_THROWFBGRENADE, TASKPRI_THROWGRENADE, -1, engine->RandomFloat(1.25f, 2.0f), false);
-	else if (pev->weapons & (1 << WEAPON_SMGRENADE))
-		PushTask(TASK_THROWSMGRENADE, TASKPRI_THROWGRENADE, -1, engine->RandomFloat(1.25f, 2.0f), false);
+		PushTask(TASK_THROWHEGRENADE, TASKPRI_THROWGRENADE, -1, engine->RandomFloat(0.6f, 0.9f), false);
+}
+
+void Bot::ThrowFrostNade(void)
+{
+	if (pev->weapons & (1 << WEAPON_FBGRENADE))
+		PushTask(TASK_THROWFBGRENADE, TASKPRI_THROWGRENADE, -1, engine->RandomFloat(0.6f, 0.9f), false);
 }
 
 int Bot::CheckGrenades (void)
@@ -1592,11 +1604,29 @@ int Bot::CheckGrenades (void)
 
 void Bot::SelectBestWeapon(void)
 {
+	if (m_weaponchangetimer + 1.0f < engine->GetTime())
+		return;
+
+	if (m_isReloading)
+		return;
+
 	if (IsZombieEntity(GetEntity()))
 	{
 		SelectWeaponByName("weapon_knife");
 		return;
 	}
+
+	if (GetCurrentTask()->taskID == TASK_THROWHEGRENADE)
+		return;
+
+	if (GetCurrentTask()->taskID == TASK_THROWFBGRENADE)
+		return;
+
+	if (GetCurrentTask()->taskID == TASK_THROWSMGRENADE)
+		return;
+
+	if (m_isReloading)
+		return;
 
 	WeaponSelect *selectTab = &g_weaponSelect[0];
 
@@ -1640,16 +1670,26 @@ void Bot::SelectBestWeapon(void)
 
 	m_isReloading = false;
 	m_reloadState = RSTATE_NONE;
+
+	m_weaponchangetimer = engine->GetTime();
 }
 
 void Bot::SelectPistol (void)
 {
-   int oldWeapons = pev->weapons;
+	if (m_weaponchangetimer + 1.0f < engine->GetTime())
+		return;
 
-   pev->weapons &= ~WeaponBits_Primary;
-   SelectBestWeapon ();
+	if (m_isReloading)
+		return;
 
-   pev->weapons = oldWeapons;
+    int oldWeapons = pev->weapons;
+
+    pev->weapons &= ~WeaponBits_Primary;
+    SelectBestWeapon ();
+
+    pev->weapons = oldWeapons;
+
+	m_weaponchangetimer = engine->GetTime();
 }
 
 int Bot::GetHighestWeapon (void)

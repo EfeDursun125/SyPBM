@@ -834,6 +834,17 @@ void AutoLoadGameMode(void)
 		}
 	}
 
+	// Anti-Block
+	Plugin_INI = FormatBuffer("%s/addons/amxmodx/configs/plugins-tsc.ini", GetModName());
+	if (TryFileOpen(Plugin_INI))
+	{
+		extern ConVar sypbm_anti_block;
+
+		sypbm_anti_block.SetInt(1);
+
+		ServerPrint("*** SyPBM Anti-Block Enabled ***");
+	}
+
 	// SyPB Pro P.47 - CSDM Mode Check
 	static auto dmActive = g_engfuncs.pfnCVarGetPointer("csdm_active");
 	static auto freeForAll = g_engfuncs.pfnCVarGetPointer("mp_freeforall");
@@ -939,7 +950,7 @@ int GetTeam (edict_t *ent)
 	else if (GetGameMod() == MODE_ZP)
 	{
 		if (g_DelayTimer > engine->GetTime())
-			player_team = 2;
+			player_team = TEAM_COUNTER;
 		else if (g_roundEnded)
 			player_team = TEAM_TERRORIST;
 		else

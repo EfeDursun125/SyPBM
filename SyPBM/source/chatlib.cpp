@@ -26,7 +26,7 @@
 
 #include <core.h>
 
-ConVar sypb_chat ("sypbm_chat", "1");
+ConVar sypbm_chat ("sypbm_chat", "1");
 
 void StripTags (char *buffer)
 {
@@ -167,7 +167,7 @@ void Bot::PrepareChatMessage (char *text)
 {
    // this function parses messages from the botchat, replaces keywords and converts names into a more human style
 
-   if (!sypb_chat.GetBool () || IsNullString (text))
+   if (!sypbm_chat.GetBool () || IsNullString (text))
       return;
 
    memset (&m_tempStrings, 0, sizeof (m_tempStrings));
@@ -356,7 +356,7 @@ bool CheckKeywords (char *tempMessage, char *reply)
 {
    // this function checks is string contain keyword, and generates relpy to it
 
-   if (!sypb_chat.GetBool () || IsNullString (tempMessage))
+   if (!sypbm_chat.GetBool () || IsNullString (tempMessage))
       return false;
 
    ITERATE_ARRAY (g_replyFactory, i)

@@ -28,7 +28,10 @@ ConVar sypb_dangerfactor_min("sypbm_dangerfactor_min", "600");
 ConVar sypb_dangerfactor_max("sypbm_dangerfactor_max", "1000");
 ConVar sypbm_aimbot("sypbm_aimbot", "0");
 ConVar sypbm_max_angular_vel("sypbm_max_angular_vel", "1024");
-ConVar sypbm_tracktime("sypbm_aim_tracking_time", "0.1");
+ConVar sypbm_tracktime_min("sypbm_aim_tracking_time_min", "0.07");
+ConVar sypbm_tracktime_max("sypbm_aim_tracking_time_max", "0.15");
+
+extern ConVar sypbm_anti_block;
 
 int Bot::FindGoal(void)
 {
@@ -618,6 +621,9 @@ void Bot::FindPathPOD(int srcIndex, int destIndex)
 	if (!IsAlive(GetEntity()))
 		DeleteSearchNodes();
 
+	if(!IsOnFloor())
+		DeleteSearchNodes();
+
 	m_goalValue = 0.0f;
 	m_chosenGoalIndex = srcIndex;
 
@@ -779,26 +785,45 @@ void PriorityQueue::HeapSiftUp (void)
 
 inline const float GF_CostNormal (int index, int parent, int team, float offset)
 {
-   float baseCost = g_exp.GetAStarValue (index, team, false);
+	if (team == TEAM_COUNTER ? g_waypoint->GetPath(index)->flags & WAYPOINT_TERRORIST : g_waypoint->GetPath(index)->flags & WAYPOINT_COUNTER)
+		return 65355.0f;
 
-   for (int i = 0; i < Const_MaxPathIndex; i++)
-   {
-      int neighbour = g_waypoint->GetPath (index)->index[i];
+    if (g_waypoint->GetPath(index)->flags & WAYPOINT_AVOID)
+	    return 65355.0f;
 
-      if (neighbour != -1)
-         baseCost += g_exp.GetDamage (neighbour, neighbour, team);
-   }
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_DJUMP)
+		return 65355.0f;
+
+	float baseCost = g_exp.GetAStarValue(index, team, false);
+
+    for (int i = 0; i < Const_MaxPathIndex; i++)
+    {
+        int neighbour = g_waypoint->GetPath (index)->index[i];
+ 
+        if (neighbour != -1)
+            baseCost += g_exp.GetDamage (neighbour, neighbour, team);
+    }
+
    float pathDist = g_waypoint->GetPathDistanceFloat (parent, index);
 
-   if (g_waypoint->GetPath (index)->flags & WAYPOINT_CROUCH)
-      baseCost += pathDist * 3.0f;
+   if (g_waypoint->GetPath(index)->flags & WAYPOINT_LADDER)
+	   baseCost += pathDist * 1.5f;
 
    return pathDist + (baseCost * (engine->RandomFloat(sypb_dangerfactor_min.GetFloat(), sypb_dangerfactor_max.GetFloat()) * 2.0f / offset));
 }
 
-inline const float GF_CostRusher(int index, int parent, int team, float offset)
+inline const float GF_CostDistNormal(int index, int parent, int team, float offset)
 {
-	float baseCost = g_exp.GetAStarValue(index, team, false);
+	if (team == TEAM_COUNTER ? g_waypoint->GetPath(index)->flags & WAYPOINT_TERRORIST : g_waypoint->GetPath(index)->flags & WAYPOINT_COUNTER)
+		return 65355.0f;
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_AVOID)
+		return 65355.0f;
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_DJUMP)
+		return 65355.0f;
+
+	float baseCost = g_exp.GetAStarValue(index, team, true);
 
 	for (int i = 0; i < Const_MaxPathIndex; i++)
 	{
@@ -807,16 +832,68 @@ inline const float GF_CostRusher(int index, int parent, int team, float offset)
 		if (neighbour != -1)
 			baseCost += g_exp.GetDamage(neighbour, neighbour, team);
 	}
+
+	float pathDist = g_waypoint->GetPathDistanceFloat(parent, index);
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_LADDER)
+		baseCost += pathDist * 1.5f;
+
+	return pathDist + (baseCost * (engine->RandomFloat(sypb_dangerfactor_min.GetFloat(), sypb_dangerfactor_max.GetFloat()) * 2.0f / offset));
+}
+
+inline const float GF_CostRusher(int index, int parent, int team, float offset)
+{
+	if (team == TEAM_COUNTER ? g_waypoint->GetPath(index)->flags & WAYPOINT_TERRORIST : g_waypoint->GetPath(index)->flags & WAYPOINT_COUNTER)
+		return 65355.0f;
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_AVOID)
+		return 65355.0f;
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_DJUMP)
+		return 65355.0f;
+
+	float baseCost = g_exp.GetAStarValue(index, team, false);
+
 	float pathDist = g_waypoint->GetPathDistanceFloat(parent, index);
 
 	if (g_waypoint->GetPath(index)->flags & WAYPOINT_CROUCH)
-		baseCost += pathDist * 3.0f;
+		baseCost += pathDist * 2.0f;
+
+	return pathDist + (baseCost * (sypb_dangerfactor_min.GetFloat() * 2.0f / offset));
+}
+
+inline const float GF_CostDistRusher(int index, int parent, int team, float offset)
+{
+	if (team == TEAM_COUNTER ? g_waypoint->GetPath(index)->flags & WAYPOINT_TERRORIST : g_waypoint->GetPath(index)->flags & WAYPOINT_COUNTER)
+		return 65355.0f;
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_AVOID)
+		return 65355.0f;
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_DJUMP)
+		return 65355.0f;
+
+	float baseCost = g_exp.GetAStarValue(index, team, true);
+
+	float pathDist = g_waypoint->GetPathDistanceFloat(parent, index);
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_CROUCH)
+		baseCost += pathDist * 2.0f;
 
 	return pathDist + (baseCost * (sypb_dangerfactor_min.GetFloat() * 2.0f / offset));
 }
 
 inline const float GF_CostCareful(int index, int parent, int team, float offset)
 {
+	if (team == TEAM_COUNTER ? g_waypoint->GetPath(index)->flags & WAYPOINT_TERRORIST : g_waypoint->GetPath(index)->flags & WAYPOINT_COUNTER)
+		return 65355.0f;
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_AVOID)
+		return 65355.0f;
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_DJUMP)
+		return 65355.0f;
+
 	float baseCost = g_exp.GetAStarValue(index, team, false);
 
 	for (int i = 0; i < Const_MaxPathIndex; i++)
@@ -824,56 +901,25 @@ inline const float GF_CostCareful(int index, int parent, int team, float offset)
 		int neighbour = g_waypoint->GetPath(index)->index[i];
 
 		if (neighbour != -1)
-			baseCost += g_exp.GetDamage(neighbour, neighbour, team);
+			baseCost *= g_exp.GetDamage(neighbour, neighbour, team);
 	}
+
 	float pathDist = g_waypoint->GetPathDistanceFloat(parent, index);
-
-	if (g_waypoint->GetPath(index)->flags & WAYPOINT_CROUCH)
-		baseCost += pathDist * 3.0f;
-
-	return pathDist + (baseCost * (sypb_dangerfactor_min.GetFloat() * 2.0f / offset));
-}
-
-inline const float GF_CostDistNormal(int index, int parent, int team, float offset)
-{
-   float baseCost = g_exp.GetAStarValue (index, team, true);
-
-   for (int i = 0; i < Const_MaxPathIndex; i++)
-   {
-      int neighbour = g_waypoint->GetPath (index)->index[i];
-
-      if (neighbour != -1)
-         baseCost += g_exp.GetDamage (neighbour, neighbour, team);
-   }
-   float pathDist = g_waypoint->GetPathDistanceFloat (parent, index);
-
-   if (g_waypoint->GetPath (index)->flags & WAYPOINT_CROUCH)
-      baseCost += pathDist * 2.0f;
-
-   return pathDist + (baseCost * (engine->RandomFloat(sypb_dangerfactor_min.GetFloat(), sypb_dangerfactor_max.GetFloat()) * 2.0f / offset));
-}
-
-inline const float GF_CostDistRusher(int index, int parent, int team, float offset)
-{
-	float baseCost = g_exp.GetAStarValue(index, team, true);
-
-	for (int i = 0; i < Const_MaxPathIndex; i++)
-	{
-		int neighbour = g_waypoint->GetPath(index)->index[i];
-
-		if (neighbour != -1)
-			baseCost += g_exp.GetDamage(neighbour, neighbour, team);
-	}
-	float pathDist = g_waypoint->GetPathDistanceFloat(parent, index);
-
-	if (g_waypoint->GetPath(index)->flags & WAYPOINT_CROUCH)
-		baseCost += pathDist * 2.0f;
 
 	return pathDist + (baseCost * (sypb_dangerfactor_min.GetFloat() * 2.0f / offset));
 }
 
 inline const float GF_CostDistCareful(int index, int parent, int team, float offset)
 {
+	if (team == TEAM_COUNTER ? g_waypoint->GetPath(index)->flags & WAYPOINT_TERRORIST : g_waypoint->GetPath(index)->flags & WAYPOINT_COUNTER)
+		return 65355.0f;
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_AVOID)
+		return 65355.0f;
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_DJUMP)
+		return 65355.0f;
+
 	float baseCost = g_exp.GetAStarValue(index, team, true);
 
 	for (int i = 0; i < Const_MaxPathIndex; i++)
@@ -881,28 +927,38 @@ inline const float GF_CostDistCareful(int index, int parent, int team, float off
 		int neighbour = g_waypoint->GetPath(index)->index[i];
 
 		if (neighbour != -1)
-			baseCost += g_exp.GetDamage(neighbour, neighbour, team);
+			baseCost *= g_exp.GetDamage(neighbour, neighbour, team);
 	}
-	float pathDist = g_waypoint->GetPathDistanceFloat(parent, index);
 
-	if (g_waypoint->GetPath(index)->flags & WAYPOINT_CROUCH)
-		baseCost += pathDist * 2.0f;
+	float pathDist = g_waypoint->GetPathDistanceFloat(parent, index);
 
 	return pathDist + (baseCost * (sypb_dangerfactor_min.GetFloat() * 2.0f / offset));
 }
-
 
 inline const float GF_CostNoHostage (int index, int parent, int, float offset)
 {
    Path *path = g_waypoint->GetPath (index);
 
-   // check if we got a hostage
-   if (path->flags & WAYPOINT_NOHOSTAGE)
+   if (path->flags & WAYPOINT_CROUCH)
       return 65355.0f;
 
-   // or a ladder (crouch) point
-   else if (path->flags & (WAYPOINT_CROUCH | WAYPOINT_LADDER))
-      return GF_CostNormal (index, parent, TEAM_COUNTER, offset) * 500.0f;
+   if (path->flags & WAYPOINT_LADDER)
+	   return 65355.0f;
+
+   if (path->flags & WAYPOINT_DJUMP)
+	   return 65355.0f;
+
+   if (path->flags & WAYPOINT_AVOID)
+	   return 65355.0f;
+
+   for (int i = 0; i < Const_MaxPathIndex; i++)
+   {
+	   if (path->connectionFlags[i] & PATHFLAG_JUMP)
+		   return 65355.0f;
+
+	   if (path->connectionFlags[i] & PATHFLAG_DOUBLE)
+		   return 65355.0f;
+   }
 
    return GF_CostNormal(index, parent, TEAM_COUNTER, offset);
 }
@@ -911,13 +967,26 @@ inline const float GF_CostNoHostageDist (int index, int parent, int, float offse
 {
    Path *path = g_waypoint->GetPath (index);
 
-   // check if we got a hostage
-   if (path->flags & WAYPOINT_NOHOSTAGE)
-      return 65355.0f;
+   if (path->flags & WAYPOINT_CROUCH)
+	   return 65355.0f;
 
-   // or a ladder (crouch) point
-   else if (path->flags & (WAYPOINT_CROUCH | WAYPOINT_LADDER))
-      return GF_CostDistNormal(index, parent, TEAM_COUNTER, offset) * 500.0f;
+   if (path->flags & WAYPOINT_LADDER)
+	   return 65355.0f;
+
+   if (path->flags & WAYPOINT_DJUMP)
+	   return 65355.0f;
+
+   if (path->flags & WAYPOINT_AVOID)
+	   return 65355.0f;
+
+   for (int i = 0; i < Const_MaxPathIndex; i++)
+   {
+	   if (path->connectionFlags[i] & PATHFLAG_JUMP)
+		   return 65355.0f;
+
+	   if (path->connectionFlags[i] & PATHFLAG_DOUBLE)
+		   return 65355.0f;
+   }
 
    return GF_CostDistNormal(index, parent, TEAM_COUNTER, offset);
 }
@@ -943,8 +1012,37 @@ inline const float HF_None (int start, int goal)
 // SyPB Pro P.42 - Zombie Waypoint improve
 inline const float GF_CostZB(int index, int parent, int team, float offset)
 {
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_COUNTER)
+		return 65355.0f;
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_AVOID)
+		return 65355.0f;
+
 	float baseCost = g_exp.GetAStarValue(index, team, false);
 	float pathDist = g_waypoint->GetPathDistanceFloat(parent, index);
+
+	if (sypbm_anti_block.GetInt() == 0)
+	{
+		int count = 0;
+
+		for (int i = 0; i < engine->GetMaxClients(); i++) // anti-stuck for zombie bots
+		{
+			if (!(g_clients[i].flags & CFLAG_USED) || !(g_clients[i].flags & CFLAG_ALIVE) || g_clients[i].team != team)
+				continue;
+
+			if ((g_waypoint->GetPath(index)->origin - g_clients[i].origin).GetLength() <= 100)
+			{
+				count++;
+
+				baseCost += pathDist * float(count);
+			}
+		}
+	}
+	else
+	{
+		if (g_waypoint->GetPath(index)->flags & WAYPOINT_DJUMP)
+			return 65355.0f;
+	}
 
 	if (g_waypoint->GetPath(index)->flags & WAYPOINT_CROUCH)
 		baseCost += pathDist * 1.5f;
@@ -967,11 +1065,53 @@ inline const float HF_ZB(int start, int goal)
 	return 1.4f * xDist + (yDist - xDist) + zDist;
 }
 
+// SyPBM 1.51 - Human Waypoint improve
+inline const float GF_CostHM(int index, int parent, int team, float offset)
+{
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_TERRORIST)
+		return 65355.0f;
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_AVOID)
+		return 65355.0f;
+
+	if (g_waypoint->GetPath(index)->flags & WAYPOINT_DJUMP) // we don't need boosting as human
+		return 65355.0f;
+
+	for (int i = 0; i < engine->GetMaxClients(); i++)
+	{
+		if (!(g_clients[i].flags & CFLAG_USED) || !(g_clients[i].flags & CFLAG_ALIVE) || g_clients[i].team == team)
+			continue;
+
+		if ((g_waypoint->GetPath(index)->origin - g_clients[i].origin).GetLength() <= 600)
+			return 65355.0f;
+	}
+
+	float baseCost = g_exp.GetAStarValue(index, team, false);
+	float pathDist = g_waypoint->GetPathDistanceFloat(parent, index);
+
+	return pathDist + (baseCost * (engine->RandomFloat(sypb_dangerfactor_min.GetFloat(), sypb_dangerfactor_max.GetFloat()) * 2.3f / offset));
+}
+
+inline const float HF_HM(int start, int goal)
+{
+	Path* pathStart = g_waypoint->GetPath(start);
+	Path* pathGoal = g_waypoint->GetPath(goal);
+
+	float xDist = fabsf(pathStart->origin.x - pathGoal->origin.x);
+	float yDist = fabsf(pathStart->origin.y - pathGoal->origin.y);
+	float zDist = fabsf(pathStart->origin.z - pathGoal->origin.z);
+
+	if (xDist > yDist)
+		return 1.4f * yDist + (xDist - yDist) + zDist;
+
+	return 1.4f * xDist + (yDist - xDist) + zDist;
+}
+
 void Bot::FindPath (int srcIndex, int destIndex, uint8_t pathType)
 {
    // this function finds a path from srcIndex to destIndex
 
-	if (m_pathtimer + 0.6f > engine->GetTime())
+	if (m_pathtimer + 1.0f > engine->GetTime())
 		return;
 
 	m_pathtimer = engine->GetTime();
@@ -992,6 +1132,9 @@ void Bot::FindPath (int srcIndex, int destIndex, uint8_t pathType)
 		DeleteSearchNodes();
 
 	if (!IsAlive(GetEntity()))
+		DeleteSearchNodes();
+
+	if (!IsOnFloor())
 		DeleteSearchNodes();
 
 	m_chosenGoalIndex = srcIndex;
@@ -1026,10 +1169,32 @@ void Bot::FindPath (int srcIndex, int destIndex, uint8_t pathType)
 	int team = GetTeam(GetEntity());
 
 	// SyPB Pro P.42 - Zombie Waypoint improve
-	if (IsZombieEntity(GetEntity()))
+	if (g_DelayTimer < engine->GetTime() && IsZombieEntity(GetEntity()))
 	{
 		gcalc = GF_CostZB;
 		hcalc = HF_ZB;
+		offset = static_cast <float> (m_skill / 20);
+	}
+	// SyPBM 1.51 - human waypoint improve
+	else if (GetGameMod() == MODE_ZP)
+	{
+		gcalc = GF_CostHM;
+		hcalc = HF_HM;
+		offset = static_cast <float> (m_skill / 20);
+	}
+	else if (HasHostage())
+	{
+		if (m_personality == PERSONALITY_RUSHER)
+		{
+			gcalc = GF_CostNoHostageDist;
+			hcalc = HF_NumberNodes;
+		}
+		else
+		{
+			gcalc = GF_CostNoHostage;
+			hcalc = HF_None;
+		}
+
 		offset = static_cast <float> (m_skill / 20);
 	}
 	else if (pathType == 1)
@@ -1037,7 +1202,7 @@ void Bot::FindPath (int srcIndex, int destIndex, uint8_t pathType)
 		if (m_isVIP || m_isReloading || m_inBombZone) // SyPBM 1.50 - Pathcost improve
 			gcalc = GF_CostCareful;
 		else
-			gcalc = HasHostage() ? GF_CostNoHostageDist : m_personality == PERSONALITY_CAREFUL ? GF_CostDistCareful : m_personality == PERSONALITY_RUSHER ? GF_CostDistRusher : GF_CostDistNormal;
+			gcalc = m_personality == PERSONALITY_CAREFUL ? GF_CostDistCareful : m_personality == PERSONALITY_RUSHER ? GF_CostDistRusher : GF_CostDistNormal;
 		hcalc = HF_NumberNodes;
 		offset = static_cast <float> (m_skill / 25);
 	}
@@ -1046,7 +1211,7 @@ void Bot::FindPath (int srcIndex, int destIndex, uint8_t pathType)
 		if (m_isVIP || m_isReloading || m_inBombZone) // SyPBM 1.50 - Pathcost improve
 			gcalc = GF_CostCareful;
 		else
-			gcalc = HasHostage() ? GF_CostNoHostage : m_personality == PERSONALITY_CAREFUL ? GF_CostCareful : m_personality == PERSONALITY_RUSHER ? GF_CostRusher : GF_CostNormal;
+			gcalc = m_personality == PERSONALITY_CAREFUL ? GF_CostCareful : m_personality == PERSONALITY_RUSHER ? GF_CostRusher : GF_CostNormal;
 		hcalc = HF_None;
 		offset = static_cast <float> (m_skill / 20);
 	}
@@ -1121,12 +1286,13 @@ void Bot::FindPath (int srcIndex, int destIndex, uint8_t pathType)
 		}
 	}
 
-	FindPathPOD(srcIndex, destIndex); // A* found no path, try floyd pathfinder instead
+	if(!HasHostage())
+		FindPathPOD(srcIndex, destIndex); // A* found no path, try floyd pathfinder instead
 }
 
 void Bot::DeleteSearchNodes (void)
 {
-	if (m_pathtimer + 0.6f > engine->GetTime())
+	if (m_pathtimer + 1.0f > engine->GetTime())
 		return;
 
    PathNode *deletingNode = null;
@@ -2420,11 +2586,11 @@ void Bot::FacePosition(void) // SyPBM 1.50 - reworked aim
 	if (m_isReloading && FNullEnt(m_enemy)) // if theres no enemy, don't aim while reloading
 		return;
 
-	if (m_trackingtime < engine->GetTime())
+	if (m_trackingtime < engine->GetTime() || GetGameMod() == MODE_ZP)
 	{
 		m_goalaimposition = m_lookAt;
 
-		m_trackingtime = engine->GetTime() + sypbm_tracktime.GetFloat();
+		m_trackingtime = engine->GetTime() + engine->RandomFloat(sypbm_tracktime_min.GetFloat(), sypbm_tracktime_max.GetFloat());
 	}
 
 	// adjust all body and view angles to face an absolute vector
@@ -2446,18 +2612,18 @@ void Bot::FacePosition(void) // SyPBM 1.50 - reworked aim
 	Vector eye_to_target;
 	engine->SubtractVectors(m_goalaimposition, EyePosition(), eye_to_target);
 
-	engine->NormalizeVector(eye_to_target, eye_to_target);
+	eye_to_target.Normalize();
 
 	float cos_error = engine->GetVectorDotProduct(deviation, direction);
 
 	float max_angvel = sypbm_max_angular_vel.GetFloat();
-
-	// adjust angular velocity limit based on aim error amount
-	if (cos_error > 0.7)
-		max_angvel *= float(sin((1.0 + ((-49.0 / 15.0) * (cos_error - 0.7))) * (3.14 / 2.0)));
 	
-	if (engine->GetTime() - m_itaimstart < 0.25)
-		max_angvel *= 4.0 * (engine->GetTime() - m_itaimstart);
+	// adjust angular velocity limit based on aim error amount
+	if (cos_error > 0.7f)
+		max_angvel *= engine->Sine((1.0f + ((-49.0f / 15.0f) * (cos_error - 0.7f))) * (3.14f / 2.0f));
+	
+	if (engine->GetTime() - m_itaimstart < 0.25f)
+		max_angvel *= 4.0f * (engine->GetTime() - m_itaimstart);
 
 	if ((direction - m_goalaimposition).GetLength() >= 1)
 		m_itaimstart = engine->GetTime();
@@ -2466,9 +2632,18 @@ void Bot::FacePosition(void) // SyPBM 1.50 - reworked aim
 	m_aimSpeed.y = engine->ApproachAngle(direction.y, deviation.y, (max_angvel * g_pGlobals->frametime));
 
 	engine->SubtractVectors(m_aimSpeed, pev->punchangle, m_aimSpeed);
-	m_aimSpeed.x = AngleNormalize(m_aimSpeed.x) * (m_skill / 40);
-	m_aimSpeed.y = AngleNormalize(m_aimSpeed.y) * (m_skill / 40);
-
+	
+	if (GetGameMod() == MODE_ZP && !IsZombieEntity(GetEntity()) && !FNullEnt(m_enemy))
+	{
+		m_aimSpeed.x = AngleNormalize(m_aimSpeed.x) * (m_skill / 7);
+		m_aimSpeed.y = AngleNormalize(m_aimSpeed.y) * (m_skill / 7);
+	}
+	else
+	{
+		m_aimSpeed.x = AngleNormalize(m_aimSpeed.x) * (m_skill / 25);
+		m_aimSpeed.y = AngleNormalize(m_aimSpeed.y) * (m_skill / 25);
+	}
+	
 	m_aimSpeed.z = 0.0;
 
 	// set the body angles to point the gun correctly

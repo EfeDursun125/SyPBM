@@ -123,6 +123,11 @@ float Engine::ApproachAngle(float target, float value, float speed)
     return AngleNormalize(value);
 }
 
+float Engine::Sine(float X)
+{
+    return static_cast <float> (sin(X));
+}
+
 float Engine::AngleDiff(float destAngle, float srcAngle)
 {
     return AngleNormalize(destAngle - srcAngle);
@@ -136,11 +141,6 @@ float Engine::Max(float one, float two)
         return two;
 
     return two;
-}
-
-bool Engine::IsZombieDarkMap(void)
-{
-    return (CVAR_GET_FLOAT("zp_lighting") == 'a' || CVAR_GET_FLOAT("bh_lights") == 'a') ? true : false;
 }
 
 void Engine::RegisterVariable (const char *variable, const char *value, VarType varType, ConVar *self)

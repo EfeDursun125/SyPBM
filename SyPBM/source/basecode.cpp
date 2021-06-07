@@ -38,6 +38,8 @@ ConVar sypb_restrictweapons ("sypbm_restrictweapons", "");
 ConVar sypb_radio_chance("sypbm_radio_chance", "60");
 ConVar sypb_camp_min("sypbm_camp_time_min", "15");
 ConVar sypb_camp_max("sypbm_camp_time_max", "60");
+ConVar sypbm_anti_block("sypbm_anti_block", "0");
+ConVar sypbm_zm_dark_mode("sypbm_zm_dark_mode", "0");
 
 int Bot::GetMessageQueue (void)
 {
@@ -155,10 +157,13 @@ bool Bot::IsEnemyViewable(edict_t *entity, bool setEnemy, bool allCheck, bool ch
 	{
 		if (!IsInViewCone(GetEntityOrigin(entity)))
 		{
+			if (!IsZombieEntity(GetEntity()) && GetGameMod() == MODE_ZP && sypbm_zm_dark_mode.GetInt() == 1)
+				return false;
+
 			if (m_backCheckEnemyTime == 0.0f)
 			{
 				// SyPB Pro P.42 - Look up enemy improve / Zombie Ai improve
-				if (IsZombieEntity(GetEntity()) && !engine->IsZombieDarkMap())
+				if (IsZombieEntity(GetEntity()))
 				{
 					if (!FNullEnt(m_enemy))
 						return false;
@@ -391,6 +396,7 @@ void Bot::ZmCampPointAction(int mode)
 						break;
 					}
 				}
+
 				navid = navid->next;
 			}
 		}
@@ -409,7 +415,7 @@ void Bot::ZmCampPointAction(int mode)
 		SelectBestWeapon();
 		MakeVectors(pev->v_angle);
 
-		m_timeCamping = engine->GetTime() + engine->RandomInt(sypb_camp_min.GetInt(), sypb_camp_max.GetInt());
+		m_timeCamping = engine->GetTime() + 9999.0f;
 		PushTask(TASK_CAMP, TASKPRI_CAMP, -1, m_timeCamping, true);
 
 		m_camp.x = g_waypoint->GetPath(campPointWaypointIndex)->campStartX;
@@ -714,6 +720,15 @@ void Bot::FindItem(void)
 		return;
 
 	if (GetCurrentTask()->taskID == TASK_PLANTBOMB)
+		return;
+
+	if (GetCurrentTask()->taskID == TASK_THROWHEGRENADE)
+		return;
+
+	if (GetCurrentTask()->taskID == TASK_THROWFBGRENADE)
+		return;
+
+	if (GetCurrentTask()->taskID == TASK_THROWSMGRENADE)
 		return;
 
 	if (IsOnLadder())
@@ -3351,7 +3366,10 @@ float Bot::GetWalkSpeed(void)
 // SyPB Pro P.40 - Is Anti Block
 bool Bot::IsAntiBlock(edict_t *entity)
 {
-	if (entity->v.solid == SOLID_NOT)
+	if (sypbm_anti_block.GetInt() == 0) // manuel mode
+		return false;
+
+	if (entity->v.solid == SOLID_NOT) // auto mode
 		return true;
 
 	return false;
@@ -3505,7 +3523,7 @@ void Bot::ChooseAimDirection (void)
 		   if (!FNullEnt(m_moveTargetEntity) && m_currentWaypointIndex == m_prevGoalIndex)
 			   m_lookAt = GetEntityOrigin(m_moveTargetEntity);
 	   }
-	   else if (g_waypoint->GetPath(m_currentWaypointIndex)->flags & WAYPOINT_CAMP)
+	   else if (g_waypoint->GetPath(m_currentWaypointIndex)->flags & WAYPOINT_CAMP || g_waypoint->GetPath(m_currentWaypointIndex)->flags & WAYPOINT_ZMHMCAMP)
 		   m_lookAt = m_camp;
 
 	   if (m_lookAt == nullvec)
@@ -3526,6 +3544,10 @@ void Bot::Think(void)
 {
    pev->button = 0;
    pev->flags |= FL_FAKECLIENT; // restore fake client bit, if it were removed by some evil action =)
+
+   // SyPBM 1.51 - zp & biohazard flashlight support (dead support, its flashing)
+   //if (sypbm_zm_dark_mode.GetInt() == 1)
+   //   pev->impulse = 100;
 
    m_moveSpeed = 0.0f;
    m_strafeSpeed = 0.0f;
@@ -3551,7 +3573,7 @@ void Bot::Think(void)
 	   GetCurrentTask()->taskID != TASK_DEFUSEBOMB))
       botMovement = true;
 
-   if (m_randomattacktimer < engine->GetTime() && !engine->IsFriendlyFireOn()) // SyPBM 1.50 - simulate players with random knife attacks
+   if (m_randomattacktimer < engine->GetTime() && !engine->IsFriendlyFireOn() && !HasHostage()) // SyPBM 1.50 - simulate players with random knife attacks
    {
 	   if (m_currentWeapon == WEAPON_KNIFE)
 	   {
@@ -3561,7 +3583,7 @@ void Bot::Think(void)
 			   pev->button |= IN_ATTACK2;
 	   }
 
-	   m_randomattacktimer = engine->GetTime() + engine->RandomFloat(0.1f, 40.0f);
+	   m_randomattacktimer = engine->GetTime() + engine->RandomFloat(0.1f, 30.0f);
    }
 
    // SyPB Pro P.42 - Fixed
@@ -3578,7 +3600,6 @@ void Bot::Think(void)
    {
       SecondThink ();
 
-      // update timer to one second
       secondThinkTimer = engine->GetTime () + 2.0f;
 
 	  if (m_voteMap != 0) // host wants the bots to vote for a map?
@@ -3587,9 +3608,9 @@ void Bot::Think(void)
 		  m_voteMap = 0;
 	  }
 
-	  extern ConVar sypb_chat;
+	  extern ConVar sypbm_chat;
 
-	  if (sypb_chat.GetBool() && !RepliesToPlayer() && m_lastChatTime + 10.0f < engine->GetTime() &&
+	  if (sypbm_chat.GetBool() && !RepliesToPlayer() && m_lastChatTime + 10.0f < engine->GetTime() &&
 		  g_lastChatTime + 5.0f < engine->GetTime()) // bot chatting turned on?
 	  {
 		  // say a text every now and then
@@ -3629,7 +3650,7 @@ void Bot::Think(void)
    CheckMessageQueue(); // check for pending messages
 
    // SyPB Pro P.30 - Start Think 
-   if (!sypb_stopbots.GetBool() && botMovement && m_notKilled)
+   if (!sypb_stopbots.GetBool() && ((botMovement && m_notKilled) || (IsAlive(GetEntity()) && GetGameMod() == MODE_ZP)))
    {
 	   // SyPB Pro P.37 - Game Mode Ai
 	   if (GetGameMod() == MODE_BASE || GetGameMod() == MODE_DM || GetGameMod() == MODE_NOTEAM ||
@@ -4319,6 +4340,12 @@ void Bot::RunTask (void)
 		   break;
 	   }
 
+	   if (GetGameMod() == MODE_BASE && GetTeam(GetEntity()) == TEAM_COUNTER && HasHostage())
+	   {
+		   TaskComplete();
+		   break;
+	   }
+
 	   SelectBestWeapon();
    	   
        m_aimFlags |= AIM_CAMP;
@@ -4858,9 +4885,30 @@ void Bot::RunTask (void)
    case TASK_THROWHEGRENADE:
       m_aimFlags |= AIM_GRENADE;
       destination = m_throw;
-	  RemoveCertainTask(TASK_FIGHTENEMY);
 
-      if (!(m_states & STATE_SEEINGENEMY))
+	  if (IsZombieEntity(GetEntity()))
+		  TaskComplete();
+
+	  RemoveCertainTask(TASK_FIGHTENEMY);
+	  
+	  if (GetGameMod() == MODE_ZP)
+	  {
+		  if ((GetEntityOrigin(m_enemy) - pev->origin).GetLength() < 600.0f)
+		  {
+			  m_destOrigin = GetEntityOrigin(m_enemy);
+			  
+			  m_moveSpeed = -pev->maxspeed;
+
+			  m_moveToGoal = false;
+		  }
+		  else
+		  {
+			  m_moveSpeed = pev->maxspeed;
+
+			  m_moveToGoal = true;
+		  }
+	  }
+      else if (!(m_states & STATE_SEEINGENEMY))
       {
          m_moveSpeed = 0.0f;
          m_strafeSpeed = 0.0f;
@@ -4889,7 +4937,7 @@ void Bot::RunTask (void)
       if (m_grenade.GetLengthSquared () < 100)
          m_grenade = CheckToss (EyePosition (), destination);
 
-      if (m_grenade.GetLengthSquared () <= 100)
+      if (GetGameMod() != MODE_ZP && m_grenade.GetLengthSquared () <= 100)
       {
          m_grenadeCheckTime = engine->GetTime () + Const_GrenadeTimer;
          m_grenade = m_lookAt;
@@ -4927,23 +4975,41 @@ void Bot::RunTask (void)
             }
             else if (!(pev->oldbuttons & IN_ATTACK))
                pev->button |= IN_ATTACK;
-			else // SyPB Pro P.27 - Debug Grenade
-			{
-				SelectBestWeapon();
-				TaskComplete();
-			}
          }
       }
+
       pev->button |= m_campButtons;
+
       break;
 
    // flashbang throw behavior (basically the same code like for HE's)
    case TASK_THROWFBGRENADE:
       m_aimFlags |= AIM_GRENADE;
       destination = m_throw;
+
+	  if (IsZombieEntity(GetEntity()))
+		  TaskComplete();
+
 	  RemoveCertainTask(TASK_FIGHTENEMY);
 
-      if (!(m_states & STATE_SEEINGENEMY))
+	  if (GetGameMod() == MODE_ZP)
+	  {
+		  if ((GetEntityOrigin(m_enemy) - pev->origin).GetLength() < 600.0f)
+		  {
+			  m_destOrigin = GetEntityOrigin(m_enemy);
+
+			  m_moveSpeed = -pev->maxspeed;
+
+			  m_moveToGoal = false;
+		  }
+		  else
+		  {
+			  m_moveSpeed = pev->maxspeed;
+
+			  m_moveToGoal = true;
+		  }
+	  }
+      else if (!(m_states & STATE_SEEINGENEMY))
       {
          m_moveSpeed = 0.0f;
          m_strafeSpeed = 0.0f;
@@ -4961,7 +5027,7 @@ void Bot::RunTask (void)
       if (m_grenade.GetLengthSquared () < 100)
          m_grenade = CheckToss (pev->origin, destination);
 
-      if (m_grenade.GetLengthSquared () <= 100)
+      if (GetGameMod() != MODE_ZP && m_grenade.GetLengthSquared () <= 100)
       {
          m_grenadeCheckTime = engine->GetTime () + Const_GrenadeTimer;
          m_grenade = m_lookAt;
@@ -4984,6 +5050,7 @@ void Bot::RunTask (void)
 
                SelectBestWeapon ();
                TaskComplete ();
+
                break;
             }
          }
@@ -4997,15 +5064,11 @@ void Bot::RunTask (void)
             }
             else if (!(pev->oldbuttons & IN_ATTACK))
                pev->button |= IN_ATTACK;
-			else // SyPB Pro P.27 - Debug Grenade
-			{
-				SelectBestWeapon();
-				TaskComplete();
-			}
          }
       }
 
       pev->button |= m_campButtons;
+
       break;
 
    // smoke grenade throw behavior
@@ -5999,6 +6062,11 @@ void Bot::BotAI (void)
       if ((g_waypoint->GetPath (m_currentWaypointIndex)->flags & WAYPOINT_CROUCH) && !(g_waypoint->GetPath (m_currentWaypointIndex)->flags & WAYPOINT_CAMP))
          pev->button |= IN_DUCK;
 
+	  // SyPBM 1.51 - use button waypoints
+	  if (g_waypoint->GetPath(m_currentWaypointIndex)->flags & WAYPOINT_USEBUTTON)
+		  if((pev->origin - g_waypoint->GetPath(m_currentWaypointIndex)->origin).GetLength() <= 50.0f)
+			  pev->button |= IN_USE;
+
       m_timeWaypointMove = engine->GetTime ();
 
       if (IsInWater ()) // special movement for swimming here
@@ -6467,14 +6535,16 @@ bool Bot::HasHostage (void)
       if (!FNullEnt (m_hostages[i]))
       {
          // don't care about dead hostages
-         if (m_hostages[i]->v.health <= 0 || (pev->origin - GetEntityOrigin (m_hostages[i])).GetLength () > 600)
+         if (m_hostages[i]->v.health <= 0 || (pev->origin - GetEntityOrigin (m_hostages[i])).GetLength () > 768)
          {
             m_hostages[i] = null;
             continue;
          }
+
          return true;
       }
    }
+
    return false;
 }
 
@@ -6589,9 +6659,9 @@ void Bot::TakeBlinded (Vector fade, int alpha)
 
 void Bot::ChatMessage (int type, bool isTeamSay)
 {
-   extern ConVar sypb_chat;
+   extern ConVar sypbm_chat;
 
-   if (g_chatFactory[type].IsEmpty () || !sypb_chat.GetBool ())
+   if (g_chatFactory[type].IsEmpty () || !sypbm_chat.GetBool ())
       return;
 
    const char *pickedPhrase = g_chatFactory[type].GetRandomElement ();
@@ -6810,6 +6880,7 @@ void Bot::RunPlayerMovement(void)
 	// SyPB Pro P.41 - Run Player Move
 	m_msecVal = static_cast <uint8_t> ((engine->GetTime() - m_msecInterval) * 1000.0f);
 	m_msecInterval = engine->GetTime();
+	m_impulse = static_cast <uint8> (pev->impulse);
 
 	// SyPB Pro P.48 - Run Player Move
 	/*
@@ -6819,6 +6890,9 @@ void Bot::RunPlayerMovement(void)
 
 	if (m_msecVal > 100)
 		m_msecVal = 100; */
+
+	if (sypbm_zm_dark_mode.GetInt() == 1)
+		m_impulse = 100;
 
 	(*g_engfuncs.pfnRunPlayerMove) (GetEntity(), 
 		m_moveAnglesForRunMove, m_moveSpeedForRunMove, m_strafeSpeedForRunMove, 0.0f, 
@@ -6985,6 +7059,9 @@ void Bot::ReactOnSound (void)
 	float hearEnemyDistance = 0.0f;
 	int hearEnemyIndex = -1;
 
+	if (m_maxhearrange == -1 || m_maxhearrange == NULL)
+		m_maxhearrange = engine->RandomFloat(512.0, 1536.0f);
+
 	// loop through all enemy clients to check for hearable stuff
 	for (int i = 0; i < engine->GetMaxClients(); i++)
 	{
@@ -6995,7 +7072,7 @@ void Bot::ReactOnSound (void)
 		float distance = (g_clients[i].soundPosition - pev->origin).GetLength();
 		float hearingDistance = g_clients[i].hearingDistance;
 
-		if (distance > hearingDistance || hearingDistance >= 2048.0f)
+		if (distance > hearingDistance || hearingDistance >= 2048.0f || distance < m_maxhearrange)
 			continue;
 
 		hearEnemyIndex = i;

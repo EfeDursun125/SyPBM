@@ -827,8 +827,8 @@ void InitConfig (void)
    }
    else
    {
-      extern ConVar sypb_chat;
-      sypb_chat.SetInt (0);
+      extern ConVar sypbm_chat;
+      sypbm_chat.SetInt (0);
    }
    
    // GENERAL DATA INITIALIZATION
@@ -1081,7 +1081,7 @@ void GameDLLInit (void)
    DetectCSVersion (); // determine version of currently running cs
 }
 
-int Spawn (edict_t *ent)
+int Spawn(edict_t *ent)
 {
    // this function asks the game DLL to spawn (i.e, give a physical existence in the virtual
    // world, in other words to 'display') the entity pointed to by ent in the game. The
@@ -1090,88 +1090,88 @@ int Spawn (edict_t *ent)
 
 	const char *entityClassname = STRING(ent->v.classname);
 
-   if (strcmp (entityClassname, "worldspawn") == 0)
-   {
-      PRECACHE_SOUND ("weapons/xbow_hit1.wav");      // waypoint add
-      PRECACHE_SOUND ("weapons/mine_activate.wav");  // waypoint delete
-      PRECACHE_SOUND ("common/wpn_hudoff.wav");      // path add/delete start
-      PRECACHE_SOUND ("common/wpn_hudon.wav");       // path add/delete done
-      PRECACHE_SOUND ("common/wpn_moveselect.wav");  // path add/delete cancel
-      PRECACHE_SOUND ("common/wpn_denyselect.wav");  // path add/delete error
+	if (strcmp(entityClassname, "worldspawn") == 0)
+	{
+		PRECACHE_SOUND("weapons/xbow_hit1.wav");      // waypoint add
+		PRECACHE_SOUND("weapons/mine_activate.wav");  // waypoint delete
+		PRECACHE_SOUND("common/wpn_hudoff.wav");      // path add/delete start
+		PRECACHE_SOUND("common/wpn_hudon.wav");       // path add/delete done
+		PRECACHE_SOUND("common/wpn_moveselect.wav");  // path add/delete cancel
+		PRECACHE_SOUND("common/wpn_denyselect.wav");  // path add/delete error
 
-      g_modelIndexLaser = PRECACHE_MODEL ("sprites/laserbeam.spr");
-      g_modelIndexArrow = PRECACHE_MODEL ("sprites/arrow1.spr");
-      g_roundEnded = true;
+		g_modelIndexLaser = PRECACHE_MODEL("sprites/laserbeam.spr");
+		g_modelIndexArrow = PRECACHE_MODEL("sprites/arrow1.spr");
+		g_roundEnded = true;
 
-      RoundInit();
+		RoundInit();
 
-      g_mapType = null; // reset map type as worldspawn is the first entity spawned
-      g_worldEdict = ent; // save the world entity for future use
-   }
-   // SyPB Pro P.34 - Base Change
-   else if (strcmp(entityClassname, "player_weaponstrip") == 0)
-   {
-	   if (g_gameVersion == CSVER_VERYOLD && (STRING(ent->v.target))[0] == '\0')
-	   {
-		   ent->v.target = MAKE_STRING("fake");
-		   ent->v.targetname = MAKE_STRING("fake");
-	   }
-	   else
-	   {
-		   REMOVE_ENTITY(ent);
+		g_mapType = null; // reset map type as worldspawn is the first entity spawned
+		g_worldEdict = ent; // save the world entity for future use
+	}
+	// SyPB Pro P.34 - Base Change
+	else if (strcmp(entityClassname, "player_weaponstrip") == 0)
+	{
+		if (g_gameVersion == CSVER_VERYOLD && (STRING(ent->v.target))[0] == '\0')
+		{
+			ent->v.target = MAKE_STRING("fake");
+			ent->v.targetname = MAKE_STRING("fake");
+		}
+		else
+		{
+			REMOVE_ENTITY(ent);
 
-		   if (g_isMetamod)
-			   RETURN_META_VALUE(MRES_SUPERCEDE, 0);
+			if (g_isMetamod)
+				RETURN_META_VALUE(MRES_SUPERCEDE, 0);
 
-		   return (*g_functionTable.pfnSpawn) (ent);
-	   }
-   }
-   else if (strcmp (entityClassname, "info_player_start") == 0)
-   {
-      SET_MODEL (ent, "models/player/urban/urban.mdl");
+			return (*g_functionTable.pfnSpawn) (ent);
+		}
+	}
+	else if (strcmp(entityClassname, "info_player_start") == 0)
+	{
+		SET_MODEL(ent, "models/player/urban/urban.mdl");
 
-      ent->v.rendermode = kRenderTransAlpha; // set its render mode to transparency
-      ent->v.renderamt = 127; // set its transparency amount
-      ent->v.effects |= EF_NODRAW;
-   }
-   else if (strcmp (entityClassname, "info_player_deathmatch") == 0)
-   {
-      SET_MODEL (ent, "models/player/terror/terror.mdl");
+		ent->v.rendermode = kRenderTransAlpha; // set its render mode to transparency
+		ent->v.renderamt = 127; // set its transparency amount
+		ent->v.effects |= EF_NODRAW;
+	}
+	else if (strcmp(entityClassname, "info_player_deathmatch") == 0)
+	{
+		SET_MODEL(ent, "models/player/terror/terror.mdl");
 
-      ent->v.rendermode = kRenderTransAlpha; // set its render mode to transparency
-      ent->v.renderamt = 127; // set its transparency amount
-      ent->v.effects |= EF_NODRAW;
-   }
+		ent->v.rendermode = kRenderTransAlpha; // set its render mode to transparency
+		ent->v.renderamt = 127; // set its transparency amount
+		ent->v.effects |= EF_NODRAW;
+	}
 
-   else if (strcmp (entityClassname, "info_vip_start") == 0)
-   {
-      SET_MODEL (ent, "models/player/vip/vip.mdl");
+	else if (strcmp(entityClassname, "info_vip_start") == 0)
+	{
+		SET_MODEL(ent, "models/player/vip/vip.mdl");
 
-      ent->v.rendermode = kRenderTransAlpha; // set its render mode to transparency
-      ent->v.renderamt = 127; // set its transparency amount
-      ent->v.effects |= EF_NODRAW;
-   }
-   else if (strcmp (entityClassname, "func_vip_safetyzone") == 0 || 
-	   strcmp (entityClassname, "info_vip_safetyzone") == 0)
-      g_mapType |= MAP_AS; // assassination map
+		ent->v.rendermode = kRenderTransAlpha; // set its render mode to transparency
+		ent->v.renderamt = 127; // set its transparency amount
+		ent->v.effects |= EF_NODRAW;
+	}
+	else if (strcmp(entityClassname, "func_vip_safetyzone") == 0 ||
+		strcmp(entityClassname, "info_vip_safetyzone") == 0)
+		g_mapType |= MAP_AS; // assassination map
 
-   else if (strcmp (entityClassname, "hostage_entity") == 0)
-      g_mapType |= MAP_CS; // rescue map
+	else if (strcmp(entityClassname, "hostage_entity") == 0)
+		g_mapType |= MAP_CS; // rescue map
 
-   else if (strcmp (entityClassname, "func_bomb_target") == 0 || 
-	   strcmp (entityClassname, "info_bomb_target") == 0)
-      g_mapType |= MAP_DE; // defusion map
+	else if (strcmp(entityClassname, "func_bomb_target") == 0 ||
+		strcmp(entityClassname, "info_bomb_target") == 0)
+		g_mapType |= MAP_DE; // defusion map
 
-   else if (strcmp (entityClassname, "func_escapezone") == 0)
-      g_mapType |= MAP_ES;
+	else if (strcmp(entityClassname, "func_escapezone") == 0)
+		g_mapType |= MAP_ES;
 
-   // next maps doesn't have map-specific entities, so determine it by name
-   else if (strncmp (GetMapName (), "fy_", 3) == 0) // fun map
-      g_mapType |= MAP_FY;
-   else if (strncmp (GetMapName (), "ka_", 3) == 0) // knife arena map
-      g_mapType |= MAP_KA;
-   else if (strncmp(GetMapName(), "awp_", 4) == 0) // SyPB Pro P.32 - AWP MAP TYPE
-	   g_mapType |= MAP_AWP;
+	// next maps doesn't have map-specific entities, so determine it by name
+	else if (strncmp(GetMapName(), "fy_", 3) == 0) // fun map
+		g_mapType |= MAP_FY;
+	else if (strncmp(GetMapName(), "ka_", 3) == 0) // knife arena map
+		g_mapType |= MAP_KA;
+	else if (strncmp(GetMapName(), "awp_", 4) == 0) // SyPB Pro P.32 - AWP MAP TYPE
+		g_mapType |= MAP_AWP;
 
    if (g_isMetamod)
       RETURN_META_VALUE (MRES_IGNORED, 0);
@@ -1398,7 +1398,7 @@ void ClientCommand(edict_t *ent)
 				switch (selection)
 				{
 				case 1:
-					g_waypoint->ToggleFlags(WAYPOINT_NOHOSTAGE);
+					g_waypoint->ToggleFlags(WAYPOINT_AVOID);
 					break;
 
 				case 2:
@@ -1423,6 +1423,10 @@ void ClientCommand(edict_t *ent)
 
 				case 7:  // SyPB Pro P.30 - SgdWP
 					g_waypoint->ToggleFlags(WAYPOINT_CROUCH);
+					break;
+
+				case 8:
+					g_waypoint->ToggleFlags(WAYPOINT_USEBUTTON);
 					break;
 
 				case 9:
@@ -1513,7 +1517,8 @@ void ClientCommand(edict_t *ent)
 					int rescuePoints = 0;
 					int campPoints = 0;
 					int sniperPoints = 0;
-					int noHostagePoints = 0;
+					int avoidPoints = 0;
+					int usePoints = 0;
 
 					for (int i = 0; i < g_numWaypoints; i++)
 					{
@@ -1535,13 +1540,18 @@ void ClientCommand(edict_t *ent)
 						if (g_waypoint->GetPath(i)->flags & WAYPOINT_SNIPER)
 							sniperPoints++;
 
-						if (g_waypoint->GetPath(i)->flags & WAYPOINT_NOHOSTAGE)
-							noHostagePoints++;
+						if (g_waypoint->GetPath(i)->flags & WAYPOINT_AVOID)
+							avoidPoints++;
+
+						if (g_waypoint->GetPath(i)->flags & WAYPOINT_USEBUTTON)
+							usePoints++;
 					}
+
 					ServerPrintNoTag("Waypoints: %d - T Points: %d\n"
 						"CT Points: %d - Goal Points: %d\n"
 						"Rescue Points: %d - Camp Points: %d\n"
-						"Block Hostage Points: %d - Sniper Points: %d\n", g_numWaypoints, terrPoints, ctPoints, goalPoints, rescuePoints, campPoints, noHostagePoints, sniperPoints);
+						"Avoid Points: %d - Sniper Points: %d\n"
+						"Use Points: %d", g_numWaypoints, terrPoints, ctPoints, goalPoints, rescuePoints, campPoints, avoidPoints, sniperPoints, usePoints);
 				}
 					break;
 
@@ -1816,6 +1826,14 @@ void ClientCommand(edict_t *ent)
 					break;
 
 				case 4:
+					g_waypoint->CreatePath(PATHCON_JUMPING);
+					break;
+
+				case 5:
+					g_waypoint->CreatePath(PATHCON_BOOSTING);
+					break;
+
+				case 6:
 					g_waypoint->DeletePath();
 					break;
 
@@ -2407,10 +2425,10 @@ void ClientCommand(edict_t *ent)
 				}
 			}
 
-			// SyPB Pro P.41 - Change the ZM Camp Point
-			if (radioCommand == Radio_HoldPosition && !IsValidBot(ent) &&
+			// SyPBM 1.51 - Don't change it!
+			/*if (radioCommand == Radio_HoldPosition && !IsValidBot(ent) &&
 				GetGameMod() == MODE_ZP && !IsZombieEntity(ent))
-				g_waypoint->ChangeZBCampPoint(GetEntityOrigin (ent));
+				g_waypoint->ChangeZBCampPoint(GetEntityOrigin (ent));*/
 
 			// SyPB Pro P.42 - Fixed 
 			if (g_clients[clientIndex].team == 0 || g_clients[clientIndex].team == 1)

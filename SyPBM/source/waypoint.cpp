@@ -93,6 +93,124 @@ void Waypoint::AddPath (int addIndex, int pathIndex, float distance)
    }
 }
 
+void Waypoint::AddPathJump(int addIndex, int pathIndex, float distance)
+{
+    if (addIndex < 0 || addIndex >= g_numWaypoints || pathIndex < 0 || pathIndex >= g_numWaypoints || addIndex == pathIndex)
+        return;
+
+    Path* path = m_paths[addIndex];
+
+    // don't allow paths get connected twice
+    for (int i = 0; i < Const_MaxPathIndex; i++)
+    {
+        if (path->index[i] == pathIndex)
+        {
+            AddLogEntry(LOG_WARNING, "Denied path creation from %d to %d (path already exists)", addIndex, pathIndex);
+            return;
+        }
+    }
+
+    // check for free space in the connection indices
+    for (int i = 0; i < Const_MaxPathIndex; i++)
+    {
+        if (path->index[i] == -1)
+        {
+            path->index[i] = static_cast <int16> (pathIndex);
+            path->distances[i] = abs(static_cast <int> (distance));
+
+            path->connectionFlags[i] |= PATHFLAG_JUMP;
+
+            AddLogEntry(LOG_DEFAULT, "Path added from %d to %d", addIndex, pathIndex);
+
+            return;
+        }
+    }
+
+    // there wasn't any free space. try exchanging it with a long-distance path
+    int maxDistance = -9999;
+    int slotID = -1;
+
+    for (int i = 0; i < Const_MaxPathIndex; i++)
+    {
+        if (path->distances[i] > maxDistance)
+        {
+            maxDistance = path->distances[i];
+            slotID = i;
+        }
+    }
+
+    if (slotID != -1)
+    {
+        AddLogEntry(LOG_DEFAULT, "Path added from %d to %d", addIndex, pathIndex);
+
+        path->index[slotID] = static_cast <int16> (pathIndex);
+        path->distances[slotID] = abs(static_cast <int> (distance));
+
+        path->connectionFlags[slotID] |= PATHFLAG_JUMP;
+    }
+}
+
+void Waypoint::AddPathBoost(int addIndex, int pathIndex, float distance)
+{
+    if (addIndex < 0 || addIndex >= g_numWaypoints || pathIndex < 0 || pathIndex >= g_numWaypoints || addIndex == pathIndex)
+        return;
+
+    Path* path = m_paths[addIndex];
+
+    // don't allow paths get connected twice
+    for (int i = 0; i < Const_MaxPathIndex; i++)
+    {
+        if (path->index[i] == pathIndex)
+        {
+            AddLogEntry(LOG_WARNING, "Denied path creation from %d to %d (path already exists)", addIndex, pathIndex);
+            return;
+        }
+    }
+
+    // check for free space in the connection indices
+    for (int i = 0; i < Const_MaxPathIndex; i++)
+    {
+        if (path->index[i] == -1)
+        {
+            path->index[i] = static_cast <int16> (pathIndex);
+            path->distances[i] = abs(static_cast <int> (distance));
+
+            path->connectionFlags[i] |= PATHFLAG_DOUBLE;
+
+            path->flags |= WAYPOINT_DJUMP;
+
+            AddLogEntry(LOG_DEFAULT, "Path added from %d to %d", addIndex, pathIndex);
+
+            return;
+        }
+    }
+
+    // there wasn't any free space. try exchanging it with a long-distance path
+    int maxDistance = -9999;
+    int slotID = -1;
+
+    for (int i = 0; i < Const_MaxPathIndex; i++)
+    {
+        if (path->distances[i] > maxDistance)
+        {
+            maxDistance = path->distances[i];
+            slotID = i;
+        }
+    }
+
+    if (slotID != -1)
+    {
+        AddLogEntry(LOG_DEFAULT, "Path added from %d to %d", addIndex, pathIndex);
+
+        path->index[slotID] = static_cast <int16> (pathIndex);
+        path->distances[slotID] = abs(static_cast <int> (distance));
+
+        path->connectionFlags[slotID] |= PATHFLAG_DOUBLE;
+
+        path->flags |= WAYPOINT_DJUMP;
+    }
+}
+
 int Waypoint::FindFarest (Vector origin, float maxDistance)
 {
    // find the farest waypoint to that Origin, and return the index to this waypoint
@@ -136,6 +254,7 @@ void Waypoint::ChangeZBCampPoint(Vector origin)
 				break;
 		}
 	}
+
 	m_zmHmPoints.RemoveAll();
 
 	if (point[1] != -1)
@@ -434,13 +553,13 @@ void Waypoint::Add (int flags, Vector waypointOrigin)
    switch (flags)
    {
    case 6:
-      index = FindNearest (GetEntityOrigin (g_hostEntity), 50.0f);
+      index = FindNearest (GetEntityOrigin (g_hostEntity), 75.0f);
 
       if (index != -1)
       {
          path = m_paths[index];
 
-         if (!(path->flags & WAYPOINT_CAMP))
+         if (!(path->flags & WAYPOINT_CAMP) && !(path->flags & WAYPOINT_ZMHMCAMP))
          {
             CenterPrint ("This is not Camping Waypoint");
             return;
@@ -448,6 +567,12 @@ void Waypoint::Add (int flags, Vector waypointOrigin)
 
          MakeVectors (g_hostEntity->v.v_angle);
          forward = GetEntityOrigin (g_hostEntity) + g_hostEntity->v.view_ofs + g_pGlobals->v_forward * 640;
+
+         if (path->flags & WAYPOINT_ZMHMCAMP)
+         {
+             path->campStartX = forward.x;
+             path->campStartY = forward.y;
+         }
 
          path->campEndX = forward.x;
          path->campEndY = forward.y;
@@ -458,7 +583,7 @@ void Waypoint::Add (int flags, Vector waypointOrigin)
       return;
 
    case 9:
-      index = FindNearest (GetEntityOrigin (g_hostEntity), 50.0f);
+      index = FindNearest (GetEntityOrigin (g_hostEntity), 25.0f);
 
       if (index != -1)
       {
@@ -478,7 +603,7 @@ void Waypoint::Add (int flags, Vector waypointOrigin)
       break;
 
    case 10:
-      index = FindNearest (GetEntityOrigin (g_hostEntity), 50.0f);
+      index = FindNearest (GetEntityOrigin (g_hostEntity), 25.0f);
 
       if (index != -1)
       {
@@ -565,6 +690,7 @@ void Waypoint::Add (int flags, Vector waypointOrigin)
       }
 
       CalculateWayzone (index);
+
       return;
    }
 
@@ -595,7 +721,7 @@ void Waypoint::Add (int flags, Vector waypointOrigin)
       break;
 
    case 3:
-      path->flags |= WAYPOINT_NOHOSTAGE;
+      path->flags |= WAYPOINT_AVOID;
       break;
 
    case 4:
@@ -611,7 +737,16 @@ void Waypoint::Add (int flags, Vector waypointOrigin)
 
       path->campStartX = forward.x;
       path->campStartY = forward.y;
+
+      // SyPBM 1.51 - set end by default for aviod camp waypoint errors
+      path->campEndX = forward.x;
+      path->campEndY = forward.y;
+
       break;
+
+   case 6: // SyPBM 1.51 use button waypoints
+       path->flags |= WAYPOINT_USEBUTTON;
+       break;
 
    case 100:
       path->flags |= WAYPOINT_GOAL;
@@ -629,8 +764,9 @@ void Waypoint::Add (int flags, Vector waypointOrigin)
    }
 
    if (flags == 104)
-	   // SyPB Pro P.24 - Zombie Mod Human Camp
-	   path->flags |= WAYPOINT_ZMHMCAMP;
+       // SyPB Pro P.24 - Zombie Mod Human Camp
+       path->flags |= WAYPOINT_ZMHMCAMP;
+       
 
    // Ladder waypoints need careful connections
    if (path->flags & WAYPOINT_LADDER)
@@ -716,6 +852,7 @@ void Waypoint::Add (int flags, Vector waypointOrigin)
          }
       }
    }
+
    PlaySound (g_hostEntity, "weapons/xbow_hit1.wav");
    CalculateWayzone (index); // calculate the wayzone of this waypoint
 }
@@ -826,7 +963,7 @@ void Waypoint::SetRadius(int radius)
 {
 	// this function allow manually setting the zone radius
 
-	int index = FindNearest(GetEntityOrigin(g_hostEntity), 50.0f);
+	int index = FindNearest(GetEntityOrigin(g_hostEntity), 75.0f);
 
 	// SyPB Pro P.37 - SgdWP
 	if (g_sautoWaypoint)
@@ -932,6 +1069,10 @@ void Waypoint::CreatePath (char dir)
       AddPath (nodeFrom, nodeTo, distance);
    else if (dir == PATHCON_INCOMING)
       AddPath (nodeTo, nodeFrom, distance);
+   else if (dir == PATHCON_JUMPING)
+       AddPathJump(nodeFrom, nodeTo, distance);
+   else if (dir == PATHCON_BOOSTING)
+       AddPathBoost(nodeFrom, nodeTo, distance);
    else
    {
       AddPath (nodeFrom, nodeTo, distance);
@@ -1041,22 +1182,24 @@ void Waypoint::CalculateWayzone (int index)
    TraceResult tr;
    bool wayBlocked = false;
 
-   if ((path->flags & (WAYPOINT_LADDER | WAYPOINT_GOAL | WAYPOINT_CAMP | WAYPOINT_RESCUE | WAYPOINT_CROUCH)) || m_learnJumpWaypoint)
+   if (path->flags & (WAYPOINT_LADDER | WAYPOINT_GOAL | WAYPOINT_CAMP | WAYPOINT_RESCUE))
    {
-      path->radius = 0.0f;
-      return;
+       path->radius = 0.0f;
+
+       return;
    }
 
    for (int i = 0; i < Const_MaxPathIndex; i++)
    {
-      if (path->index[i] != -1 && (m_paths[path->index[i]]->flags & WAYPOINT_LADDER))
+      if (path->index[i] != -1)
       {
-         path->radius = 0.0f;
+         path->radius = 8.0f;
+
          return;
       }
    }
 
-   for (float scanDistance = 16.0f; scanDistance < 128.0f; scanDistance += 16.0f)
+   for (float scanDistance = 16.0f; scanDistance < 144.0f; scanDistance += 16.0f)
    {
       start = path->origin;
       MakeVectors (nullvec);
@@ -1081,7 +1224,7 @@ void Waypoint::CalculateWayzone (int index)
 
             if (FClassnameIs (tr.pHit, "func_door") || FClassnameIs (tr.pHit, "func_door_rotating"))
             {
-               path->radius = 0.0f;
+               path->radius = 8.0f;
                wayBlocked = true;
 
                break;
@@ -1129,13 +1272,15 @@ void Waypoint::CalculateWayzone (int index)
 
          direction.y = AngleNormalize (direction.y + circleRadius);
       }
+
       if (wayBlocked)
          break;
    }
+
    path->radius -= 16.0f;
 
-   if (path->radius < 0.0f)
-      path->radius = 0.0f;
+   if (path->radius < 8.0f)
+      path->radius = 8.0f;
 }
 
 
@@ -1625,11 +1770,11 @@ char *Waypoint::GetWaypointInfo (int id)
    }
 
    static char messageBuffer[1024];
-   sprintf (messageBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s", (path->flags == 0 && !jumpPoint) ? " (none)" : "", path->flags & WAYPOINT_LIFT ? " LIFT" : "", path->flags & WAYPOINT_CROUCH ? " CROUCH" : "", path->flags & WAYPOINT_CROSSING ? " CROSSING" : "", path->flags & WAYPOINT_CAMP ? " CAMP" : "", path->flags & WAYPOINT_TERRORIST ? " TERRORIST" : "", path->flags & WAYPOINT_COUNTER ? " CT" : "", path->flags & WAYPOINT_SNIPER ? " SNIPER" : "", path->flags & WAYPOINT_GOAL ? " GOAL" : "", path->flags & WAYPOINT_LADDER ? " LADDER" : "", path->flags & WAYPOINT_RESCUE ? " RESCUE" : "", path->flags & WAYPOINT_DJUMP ? " JUMPHELP" : "", path->flags & WAYPOINT_NOHOSTAGE ? " NOHOSTAGE" : "", jumpPoint ? " JUMP" : "");
+   sprintf (messageBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", (path->flags == 0 && !jumpPoint) ? " (none)" : "", path->flags & WAYPOINT_LIFT ? " LIFT" : "", path->flags & WAYPOINT_CROUCH ? " CROUCH" : "", path->flags & WAYPOINT_CROSSING ? " CROSSING" : "", path->flags & WAYPOINT_CAMP ? " CAMP" : "", path->flags & WAYPOINT_TERRORIST ? " TERRORIST" : "", path->flags & WAYPOINT_COUNTER ? " CT" : "", path->flags & WAYPOINT_SNIPER ? " SNIPER" : "", path->flags & WAYPOINT_GOAL ? " GOAL" : "", path->flags & WAYPOINT_LADDER ? " LADDER" : "", path->flags & WAYPOINT_RESCUE ? " RESCUE" : "", path->flags & WAYPOINT_DJUMP ? " JUMPHELP" : "", path->flags & WAYPOINT_AVOID ? " AVOID" : "", path->flags & WAYPOINT_USEBUTTON ? " USE BUTTON" : "", jumpPoint ? " JUMP" : "");
 
    // SyPB Pro P.29 - Zombie Mode Hm Camp Waypoints
    if (path->flags & WAYPOINT_ZMHMCAMP)
-	   sprintf(messageBuffer, "Zombie Mode Human Camp Waypoint");
+	   sprintf(messageBuffer, "ZOMBIE MODE HUMAN CAMP");
 
    // return the message buffer
    return messageBuffer;
@@ -1697,7 +1842,7 @@ void Waypoint::Think(void)
 			{
 				if ((g_hostEntity->v.movetype == MOVETYPE_FLY) && !(g_hostEntity->v.flags & (FL_ONGROUND | FL_PARTIALGROUND)))
 				{
-					if (FindNearest(GetEntityOrigin(g_hostEntity), 50.0f, WAYPOINT_LADDER) == -1)
+					if (FindNearest(GetEntityOrigin(g_hostEntity), 75.0f, WAYPOINT_LADDER) == -1)
 					{
 						Add(3);
 						SetRadius(0);
@@ -1710,7 +1855,7 @@ void Waypoint::Think(void)
 			{
 				if ((g_hostEntity->v.movetype == MOVETYPE_FLY) && !(g_hostEntity->v.flags & (FL_ONGROUND | FL_PARTIALGROUND)))
 				{
-					if (FindNearest(GetEntityOrigin(g_hostEntity), 50.0f, WAYPOINT_LADDER) == -1)
+					if (FindNearest(GetEntityOrigin(g_hostEntity), 75.0f, WAYPOINT_LADDER) == -1)
 					{
 						Add(3);
 						SetRadius(0);
@@ -1855,40 +2000,39 @@ void Waypoint::ShowWaypointMsg(void)
 				float nodeHalfHeight = nodeHeight * 0.5f;
 
 				// all waypoints are by default are green
-				Color nodeColor = Color(0, 255, 0);
+				Color nodeColor = Color(0, 255, 0, 255);
 
 				// colorize all other waypoints
 				if (m_paths[i]->flags & WAYPOINT_CAMP)
-					nodeColor = Color(0, 255, 255);
+					nodeColor = Color(0, 255, 255, 255);
 				else if (m_paths[i]->flags & WAYPOINT_GOAL)
-					nodeColor = Color(128, 0, 255);
+					nodeColor = Color(128, 0, 255, 255);
 				else if (m_paths[i]->flags & WAYPOINT_LADDER)
-					nodeColor = Color(128, 64, 0);
+					nodeColor = Color(128, 64, 0, 255);
 				else if (m_paths[i]->flags & WAYPOINT_RESCUE)
-					nodeColor = Color(255, 255, 255);
+					nodeColor = Color(255, 255, 255, 255);
+                else if (m_paths[i]->flags & WAYPOINT_AVOID)
+                    nodeColor = Color(255, 0, 0, 255);
+                else if (m_paths[i]->flags & WAYPOINT_USEBUTTON)
+                    nodeColor = Color(0, 0, 255, 255);
+                else if (m_paths[i]->flags & WAYPOINT_ZMHMCAMP)
+                    nodeColor = Color(199, 69, 209, 255);
 
 				// colorize additional flags
 				Color nodeFlagColor = Color(-1, -1, -1);
 
 				// check the colors
 				if (m_paths[i]->flags & WAYPOINT_SNIPER)
-					nodeFlagColor = Color(130, 87, 0);
-				else if (m_paths[i]->flags & WAYPOINT_NOHOSTAGE)
-					nodeFlagColor = Color(255, 255, 255);
+					nodeFlagColor = Color(130, 87, 0, 255);
 				else if (m_paths[i]->flags & WAYPOINT_TERRORIST)
-					nodeFlagColor = Color(255, 0, 0);
+					nodeFlagColor = Color(255, 0, 0, 255);
 				else if (m_paths[i]->flags & WAYPOINT_COUNTER)
-					nodeFlagColor = Color(0, 0, 255);
+					nodeFlagColor = Color(0, 0, 255, 255);
+                else if (m_paths[i]->flags & WAYPOINT_ZMHMCAMP)
+                    nodeFlagColor = Color(0, 0, 255, 255);
 
-				// SyPB Pro P.24 - Zombie Mod Human Camp
-				if (m_paths[i]->flags & WAYPOINT_ZMHMCAMP)
-				{
-					nodeColor = Color(199, 69, 209);
-					nodeFlagColor = Color(0, 0, 255);
-				}
-
-				nodeColor.alpha = 250;
-				nodeFlagColor.alpha = 250;
+				nodeColor.alpha = 255;
+				nodeFlagColor.alpha = 255;
 
 				// draw node without additional flags
 				if (nodeFlagColor.red == -1)
@@ -1914,15 +2058,15 @@ void Waypoint::ShowWaypointMsg(void)
 		{
 			// finding waypoint - pink arrow
 			if (m_findWPIndex != -1)
-				engine->DrawLine(g_hostEntity, GetEntityOrigin(g_hostEntity), m_paths[m_findWPIndex]->origin, Color(128, 0, 128, 200), 10, 0, 0, 5, LINE_ARROW);
+				engine->DrawLine(g_hostEntity, GetEntityOrigin(g_hostEntity), m_paths[m_findWPIndex]->origin, Color(128, 0, 128, 255), 10, 0, 0, 5, LINE_ARROW);
 
 			// cached waypoint - yellow arrow
 			if (m_cacheWaypointIndex != -1)
-				engine->DrawLine(g_hostEntity, GetEntityOrigin(g_hostEntity), m_paths[m_cacheWaypointIndex]->origin, Color(255, 255, 0, 200), 10, 0, 0, 5, LINE_ARROW);
+				engine->DrawLine(g_hostEntity, GetEntityOrigin(g_hostEntity), m_paths[m_cacheWaypointIndex]->origin, Color(255, 255, 0, 255), 10, 0, 0, 5, LINE_ARROW);
 
 			// waypoint user facing at - white arrow
 			if (m_facingAtIndex != -1)
-				engine->DrawLine(g_hostEntity, GetEntityOrigin(g_hostEntity), m_paths[m_facingAtIndex]->origin, Color(255, 255, 255, 200), 10, 0, 0, 5, LINE_ARROW);
+				engine->DrawLine(g_hostEntity, GetEntityOrigin(g_hostEntity), m_paths[m_facingAtIndex]->origin, Color(255, 255, 255, 255), 10, 0, 0, 5, LINE_ARROW);
 
 			m_arrowDisplayTime = engine->GetTime();
 		}
@@ -1937,13 +2081,13 @@ void Waypoint::ShowWaypointMsg(void)
 		m_pathDisplayTime = engine->GetTime() + 1.0f;
 
 		// draw the camplines
-		if (path->flags & WAYPOINT_CAMP)
+		if (path->flags & WAYPOINT_CAMP || path->flags & WAYPOINT_ZMHMCAMP)
 		{
 			const Vector &src = path->origin + Vector(0, 0, (path->flags & WAYPOINT_CROUCH) ? 18.0f : 36.0f); // check if it's a source
 
-																											  // draw it now
-			engine->DrawLine(g_hostEntity, src, Vector(path->campStartX, path->campStartY, src.z), Color(255, 0, 0, 200), 10, 0, 0, 10);
-			engine->DrawLine(g_hostEntity, src, Vector(path->campEndX, path->campEndY, src.z), Color(255, 0, 0, 200), 10, 0, 0, 10);
+			// draw it now
+			engine->DrawLine(g_hostEntity, src, Vector(path->campStartX, path->campStartY, src.z), Color(255, 0, 0, 255), 10, 0, 0, 10);
+			engine->DrawLine(g_hostEntity, src, Vector(path->campEndX, path->campEndY, src.z), Color(255, 0, 0, 255), 10, 0, 0, 10);
 		}
 
 		// draw the connections
@@ -1954,18 +2098,21 @@ void Waypoint::ShowWaypointMsg(void)
 
 			// jump connection
 			if (path->connectionFlags[i] & PATHFLAG_JUMP)
-				engine->DrawLine(g_hostEntity, path->origin, m_paths[path->index[i]]->origin, Color(255, 0, 128, 200), 5, 0, 0, 10);
+				engine->DrawLine(g_hostEntity, path->origin, m_paths[path->index[i]]->origin, Color(255, 0, 0, 255), 5, 0, 0, 10);
+            // boosting friend connection
+            else if (path->connectionFlags[i] & PATHFLAG_DOUBLE)
+                engine->DrawLine(g_hostEntity, path->origin, m_paths[path->index[i]]->origin, Color(0, 0, 255, 255), 5, 0, 0, 10);
 			else if (IsConnected(path->index[i], nearestIndex)) // twoway connection
-				engine->DrawLine(g_hostEntity, path->origin, m_paths[path->index[i]]->origin, Color(255, 255, 0, 200), 5, 0, 0, 10);
+				engine->DrawLine(g_hostEntity, path->origin, m_paths[path->index[i]]->origin, Color(255, 255, 0, 255), 5, 0, 0, 10);
 			else // oneway connection
-				engine->DrawLine(g_hostEntity, path->origin, m_paths[path->index[i]]->origin, Color(250, 250, 250, 200), 5, 0, 0, 10);
+				engine->DrawLine(g_hostEntity, path->origin, m_paths[path->index[i]]->origin, Color(250, 250, 250, 255), 5, 0, 0, 10);
 		}
 
 		// now look for oneway incoming connections
 		for (int i = 0; i < g_numWaypoints; i++)
 		{
 			if (IsConnected(m_paths[i]->pathNumber, path->pathNumber) && !IsConnected(path->pathNumber, m_paths[i]->pathNumber))
-				engine->DrawLine(g_hostEntity, path->origin, m_paths[i]->origin, Color(0, 192, 96, 200), 5, 0, 0, 10);
+				engine->DrawLine(g_hostEntity, path->origin, m_paths[i]->origin, Color(0, 192, 96, 255), 5, 0, 0, 10);
 		}
 
 		// draw the radius circle
@@ -1975,7 +2122,7 @@ void Waypoint::ShowWaypointMsg(void)
 		if (path->radius > 0.0f)
 		{
 			const float root = sqrtf(path->radius * path->radius * 0.5f);
-			const Color &def = Color(0, 0, 255, 200);
+			const Color &def = Color(0, 0, 255, 255);
 
 			engine->DrawLine(g_hostEntity, origin + Vector(path->radius, 0.0f, 0.0f), origin + Vector(root, -root, 0), def, 5, 0, 0, 10);
 			engine->DrawLine(g_hostEntity, origin + Vector(root, -root, 0.0f), origin + Vector(0, -path->radius, 0), def, 5, 0, 0, 10);
@@ -1992,7 +2139,7 @@ void Waypoint::ShowWaypointMsg(void)
 		else
 		{
 			const float root = sqrtf(32.0f);
-			const Color &def = Color(255, 0, 0, 200);
+			const Color &def = Color(255, 0, 0, 255);
 
 			engine->DrawLine(g_hostEntity, origin + Vector(root, -root, 0), origin + Vector(-root, root, 0), def, 5, 0, 0, 10);
 			engine->DrawLine(g_hostEntity, origin + Vector(-root, -root, 0), origin + Vector(root, root, 0), def, 5, 0, 0, 10);
