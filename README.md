@@ -20,7 +20,7 @@ The Developer of the SyPB doesn't have time for develop anymore, original projec
 
 # How to install
 1. You must have original sypb & metamod.
-2. Download sypbm.dll & updated sypb.cfg in SyPBM folder.
+2. Download latest sypbm release.
 3. Put updated sypb.cfg to "cstrike\addons\sypb"
 4. Put sypbm.dll to "cstrike\addons\sypb\dlls"
 5. Open "cstrike\addons\metamod\plugins.ini"
