@@ -348,9 +348,10 @@ enum WaypointFlag
    WAYPOINT_LADDER = (1 << 5), // waypoint is on ladder
    WAYPOINT_RESCUE = (1 << 6), // waypoint is a hostage rescue point
    WAYPOINT_CAMP = (1 << 7), // waypoint is a camping point
-   WAYPOINT_NOHOSTAGE = (1 << 8), // only use this waypoint if no hostage
    WAYPOINT_DJUMP = (1 << 9), // bot help's another bot (requster) to get somewhere (using djump)
    WAYPOINT_ZMHMCAMP = (1 << 10), // SyPB Pro P.24 - Zombie Mod Human Camp
+   WAYPOINT_AVOID = (1 << 11), // bots will avoid these waypoints mostly
+   WAYPOINT_USEBUTTON = (1 << 12), // bots will use button
    WAYPOINT_SNIPER = (1 << 28), // it's a specific sniper point
    WAYPOINT_TERRORIST = (1 << 29), // it's a specific terrorist point
    WAYPOINT_COUNTER = (1 << 30)  // it's a specific ct point
@@ -368,7 +369,9 @@ enum PathConnection
 {
    PATHCON_OUTGOING = 0,
    PATHCON_INCOMING,
-   PATHCON_BOTHWAYS
+   PATHCON_BOTHWAYS,
+   PATHCON_JUMPING,
+   PATHCON_BOOSTING
 };
 
 // SyPB Support Game Mode
@@ -417,6 +420,8 @@ const int Const_MaxRegMessages = 256;
 const int Const_MaxWaypoints = 1024;
 const int Const_MaxWeapons = 32;
 const int Const_NumWeapons = 26;
+
+const bool AntiBlock = false;
 
 // weapon masks
 const int WeaponBits_Primary = ((1 << WEAPON_XM1014) | (1 <<WEAPON_M3) | (1 << WEAPON_MAC10) | (1 << WEAPON_UMP45) | (1 << WEAPON_MP5) | (1 << WEAPON_TMP) | (1 << WEAPON_P90) | (1 << WEAPON_AUG) | (1 << WEAPON_M4A1) | (1 << WEAPON_SG552) | (1 << WEAPON_AK47) | (1 << WEAPON_SCOUT) | (1 << WEAPON_SG550) | (1 << WEAPON_AWP) | (1 << WEAPON_G3SG1) | (1 << WEAPON_M249) | (1 << WEAPON_FAMAS) | (1 << WEAPON_GALIL));
@@ -751,6 +756,7 @@ private:
    float m_msecDel; // used for msec calculation
    float m_msecNum; // also used for mseccalculation
    float m_msecInterval; // used for leon hartwig's method for msec calculation
+   float m_impulse;
 
    float m_frameInterval; // bot's frame interval
    float m_lastThinkTime; // time bot last thinked
@@ -843,7 +849,8 @@ private:
    bool IsEnemyViewable (edict_t *player, bool setEnemy = false, bool allCheck = false, bool checkOnly = false);
 
    void CheckGrenadeThrow(void);
-   void ThrowGrenadeZP(void);
+   void ThrowFireNade(void);
+   void ThrowFrostNade(void);
 
    edict_t *FindNearestButton (const char *className);
    edict_t *FindBreakable (void);
@@ -1052,6 +1059,9 @@ public:
    float m_randomattacktimer; // a timer for make bots random attack with knife like humans
    float m_itaimstart; // aim start time
    float m_trackingtime; // updating look position time
+   float m_zpgrenadetimer; // throw grenade
+   float m_maxhearrange; // maximum range for hearing enemy
+   float m_weaponchangetimer; // a timer for weapon change
 
    float m_backCheckEnemyTime; // SyPB Pro P.37 - Aim OS
 
@@ -1312,6 +1322,8 @@ public:
 
    void InitTypes (int mode);
    void AddPath (int addIndex, int pathIndex, float distance);
+   void AddPathJump(int addIndex, int pathIndex, float distance);
+   void AddPathBoost(int addIndex, int pathIndex, float distance);
 
    int GetFacingIndex (void);
    int FindFarest (Vector origin, float maxDistance = 32.0f);

@@ -1775,7 +1775,6 @@ typedef float vec_t;            // needed before including progdefs.h
 
 #define vec3_t Vector
 
-
 #define    MAX_ENT_LEAFS    48
 
 typedef struct entvars_s
@@ -3318,8 +3317,7 @@ public:
 
     float Max(float one, float two);
 
-    // checks map darkness in zp & biohazard
-    bool IsZombieDarkMap(void);
+    float Sine(float X);
 
    // initializes random number generator
    void InitFastRNG (void);
@@ -3376,7 +3374,7 @@ public:
 
    const Client &GetClientByIndex (int index);
 
-   void MaintainClients (void);
+   void MaintainClients(void);
 
    void DrawLine (const Client &client, const Vector &start, const Vector &end, const Color &color, int width, int noise, int speed, int life, int lineType = LINE_SIMPLE);
  
