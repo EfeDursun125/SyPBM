@@ -3319,6 +3319,8 @@ public:
 
     float Sine(float X);
 
+    float Clamp(float a, float b, float c);
+
    // initializes random number generator
    void InitFastRNG (void);
 
@@ -3421,9 +3423,13 @@ public:
       TraceResult tr;
 
       if (m_hullNumber != -1)
-         g_engfuncs.pfnTraceHull (m_start, m_end, m_monsters ? 1 : 0, m_hullNumber, m_ignore ? m_ignore : null, &tr);
+      {
+          g_engfuncs.pfnTraceHull(m_start, m_end, m_monsters ? 1 : 0, m_hullNumber, m_ignore ? m_ignore : null, &tr);
+      }
       else
-         g_engfuncs.pfnTraceLine (m_start, m_end, m_monsters ? 1 : 0 | m_glass ? 0x100 : 0,  m_ignore ? m_ignore : null, &tr);
+      {
+          g_engfuncs.pfnTraceLine(m_start, m_end, m_monsters ? 1 : 0 || m_glass ? 0x100 : 0, m_ignore ? m_ignore : null, &tr);
+      }
 
       m_fraction = tr.flFraction;
       m_planeNormal = tr.vecPlaneNormal;

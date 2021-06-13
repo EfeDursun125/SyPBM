@@ -50,9 +50,9 @@
 #define SUPPORT_SWNPC_VERSION_F 1.48
 
 // SyPBM Version
-#define PRODUCT_VERSION_DWORD 1,51,20210607,699 // yyyy/mm/dd  
-#define PRODUCT_VERSION "1.51"
-#define PRODUCT_VERSION_F 1.51
+#define PRODUCT_VERSION_DWORD 1,52,20210623,700 // yyyy/mm/dd  
+#define PRODUCT_VERSION "1.52"
+#define PRODUCT_VERSION_F 1.52
 
 // general product information
 #define PRODUCT_NAME "SyPBM"

@@ -308,7 +308,8 @@ enum AimDest
    AIM_ENTITY = (1 << 4), // aim at entity like buttons, hostages
    AIM_ENEMY = (1 << 5), // aim at enemy
    AIM_GRENADE = (1 << 6), // aim for grenade throw
-   AIM_OVERRIDE = (1 << 7)  // overrides all others (blinded)
+   AIM_OVERRIDE = (1 << 7),  // overrides all others (blinded)
+   AIM_RANDOMWAYPOINT = (1 << 8) // aim random waypoint
 };
 
 // famas/glock burst mode status + m4a1/usp silencer
@@ -352,6 +353,7 @@ enum WaypointFlag
    WAYPOINT_ZMHMCAMP = (1 << 10), // SyPB Pro P.24 - Zombie Mod Human Camp
    WAYPOINT_AVOID = (1 << 11), // bots will avoid these waypoints mostly
    WAYPOINT_USEBUTTON = (1 << 12), // bots will use button
+   WAYPOINT_FALLCHECK = (1 << 13), // bots will check ground
    WAYPOINT_SNIPER = (1 << 28), // it's a specific sniper point
    WAYPOINT_TERRORIST = (1 << 29), // it's a specific terrorist point
    WAYPOINT_COUNTER = (1 << 30)  // it's a specific ct point
@@ -744,6 +746,8 @@ private:
    bool m_isReloading; // bot is reloading a gun
    int m_reloadState; // current reload state
    int m_voicePitch; // bot voice pitch
+   bool m_isZombieBot; // checks bot if zombie
+   int m_team; // team
 
    bool m_duckDefuse; // should or not bot duck to defuse bomb
    float m_duckDefuseCheckTime; // time to check for ducking for defuse
@@ -821,6 +825,7 @@ private:
    void CheckRadioCommands (void);
    void CheckReload (void);
    void CheckBurstMode (float distance);
+   int FindFarestVisible(edict_t* self, float maxDistance = 32.0f);
    
    int CheckMaxClip(int weaponId, int *weaponIndex);
 
@@ -1032,6 +1037,7 @@ public:
    Vector m_doubleJumpOrigin; // origin of double jump
    Vector m_lastBombPosition; // origin of last remembered bomb position
    Vector m_goalaimposition; // goal aim position for tracking
+   Vector m_waypointaim; // waypoint aim
 
    float m_viewDistance; // current view distance
    float m_maxViewDistance; // maximum view distance
@@ -1062,6 +1068,10 @@ public:
    float m_zpgrenadetimer; // throw grenade
    float m_maxhearrange; // maximum range for hearing enemy
    float m_weaponchangetimer; // a timer for weapon change
+   float m_aimfronttimer;
+   float m_waypointaimchangetimer;
+   float m_lookYawVel;
+   float m_lookPitchVel;
 
    float m_backCheckEnemyTime; // SyPB Pro P.37 - Aim OS
 
@@ -1327,9 +1337,8 @@ public:
 
    int GetFacingIndex (void);
    int FindFarest (Vector origin, float maxDistance = 32.0f);
-   int FindWaypointForZM(edict_t* entity, Vector origin,  float maxDistance = 32.0f);
-   int FindNearest(Vector origin, float minDistance = 9999.0, int flags = -1, 
-	   edict_t *entity = null, int *findWaypointPoint = (int *)-2, int mode = -1);
+   int FindNearest(Vector origin, float minDistance = 9999.0, int flags = -1, edict_t *entity = null, int *findWaypointPoint = (int *)-2, int mode = -1);
+   int FindSafestForHuman(edict_t* enemy, edict_t* self, float maxDistance);
    void FindInRadius (Vector origin, float radius, int *holdTab, int *count);
    void FindInRadius (Array <int> &queueID, float radius, Vector origin);
 

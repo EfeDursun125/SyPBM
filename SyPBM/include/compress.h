@@ -341,6 +341,7 @@ public:
             }
          }
       }
+
       fp.Close ();
 
       return bufferPtr;
