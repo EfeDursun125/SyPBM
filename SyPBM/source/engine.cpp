@@ -133,6 +133,11 @@ float Engine::AngleDiff(float destAngle, float srcAngle)
     return AngleNormalize(destAngle - srcAngle);
 }
 
+float Engine::Clamp(float a, float b, float c)
+{
+    return (a > c ? c : (a < b ? b : a));
+}
+
 float Engine::Max(float one, float two)
 {
     if (one > two)

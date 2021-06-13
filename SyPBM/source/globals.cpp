@@ -435,7 +435,7 @@ MenuText g_menus[26] =
 		"\\w4. Avoid\v"
 		"\\y5. Rescue Zone\v"
 		"\\w6. Camping\v"
-		"7. Camp End / Human Camp Aim Direction\v"
+		"7. Camp End\v"
 		"\\r8. Map Goal\v"
 		"\\w9. Jump\v\v"
 		"0. Exit"
@@ -445,7 +445,7 @@ MenuText g_menus[26] =
 	{
 		0x3ff,
 		"\\yToggle Waypoint Flags\\w\v\v"
-		"1. Avoid\v"
+		"1. Fall Check\v"
 		"2. Terrorists Specific\v"
 		"3. CTs Specific\v"
 		"4. Use Elevator\v"

@@ -37,6 +37,7 @@ void Waypoint::Initialize (void)
          m_paths[i] = null;
       }
    }
+
    g_numWaypoints = 0;
    m_lastWaypoint = nullvec;
 }
@@ -120,6 +121,8 @@ void Waypoint::AddPathJump(int addIndex, int pathIndex, float distance)
 
             path->connectionFlags[i] |= PATHFLAG_JUMP;
 
+            path->connectionVelocity[i] = -1;
+
             AddLogEntry(LOG_DEFAULT, "Path added from %d to %d", addIndex, pathIndex);
 
             return;
@@ -147,6 +150,8 @@ void Waypoint::AddPathJump(int addIndex, int pathIndex, float distance)
         path->distances[slotID] = abs(static_cast <int> (distance));
 
         path->connectionFlags[slotID] |= PATHFLAG_JUMP;
+
+        path->connectionVelocity[slotID] = -1;
     }
 }
 
@@ -229,6 +234,33 @@ int Waypoint::FindFarest (Vector origin, float maxDistance)
    }
 
    return index;
+}
+
+int Waypoint::FindSafestForHuman(edict_t *enemy, edict_t* self, float maxDistance) // trash
+{
+    int index = -1;
+
+    for (int i = 0; i < g_numWaypoints; i++)
+    {
+        float distance = (m_paths[i]->origin - GetEntityOrigin(enemy)).GetLength();
+
+        if (!(::IsVisible(m_paths[i]->origin, self)))
+            continue;
+
+        if (!IsInViewCone(m_paths[i]->origin, self))
+            continue;
+
+        if ((m_paths[i]->origin - GetEntityOrigin(self)).GetLength() <= 75.0f)
+            continue;
+
+        if (distance > maxDistance)
+        {
+            index = i;
+            maxDistance = distance;
+        }
+    }
+
+    return index;
 }
 
 // SyPB Pro P.41 - Zombie Mode Camp Improve
@@ -559,7 +591,7 @@ void Waypoint::Add (int flags, Vector waypointOrigin)
       {
          path = m_paths[index];
 
-         if (!(path->flags & WAYPOINT_CAMP) && !(path->flags & WAYPOINT_ZMHMCAMP))
+         if (!(path->flags & WAYPOINT_CAMP))
          {
             CenterPrint ("This is not Camping Waypoint");
             return;
@@ -568,7 +600,7 @@ void Waypoint::Add (int flags, Vector waypointOrigin)
          MakeVectors (g_hostEntity->v.v_angle);
          forward = GetEntityOrigin (g_hostEntity) + g_hostEntity->v.view_ofs + g_pGlobals->v_forward * 640;
 
-         if (path->flags & WAYPOINT_ZMHMCAMP)
+         if (path->flags & WAYPOINT_USEBUTTON)
          {
              path->campStartX = forward.x;
              path->campStartY = forward.y;
@@ -589,7 +621,7 @@ void Waypoint::Add (int flags, Vector waypointOrigin)
       {
          distance = (m_paths[index]->origin - GetEntityOrigin (g_hostEntity)).GetLength ();
 
-         if (distance < 50)
+         if (distance < 25)
          {
             placeNew = false;
             path = m_paths[index];
@@ -609,7 +641,7 @@ void Waypoint::Add (int flags, Vector waypointOrigin)
       {
          distance = (m_paths[index]->origin - GetEntityOrigin (g_hostEntity)).GetLength ();
 
-         if (distance < 50)
+         if (distance < 25)
          {
             placeNew = false;
             path = m_paths[index];
@@ -867,7 +899,7 @@ void Waypoint::Delete (void)
    if (g_botManager->GetBotsNum () > 0)
       g_botManager->RemoveAll ();
 
-   int index = FindNearest (GetEntityOrigin (g_hostEntity), 50.0f);
+   int index = FindNearest (GetEntityOrigin (g_hostEntity), 75.0f);
 
    if (index == -1)
       return;
@@ -924,7 +956,7 @@ void Waypoint::Delete (void)
 // SyPB Pro P.30 - SgdWP
 void Waypoint::DeleteFlags(void)
 {
-	int index = FindNearest(GetEntityOrigin(g_hostEntity), 50.0f);
+	int index = FindNearest(GetEntityOrigin(g_hostEntity), 75.0f);
 
 	if (index != -1)
 	{
@@ -937,7 +969,7 @@ void Waypoint::ToggleFlags (int toggleFlag)
 {
    // this function allow manually changing flags
 
-   int index = FindNearest (GetEntityOrigin (g_hostEntity), 50.0f);
+   int index = FindNearest (GetEntityOrigin (g_hostEntity), 75.0f);
 
    if (index != -1)
    {
@@ -1159,7 +1191,7 @@ void Waypoint::DeletePath (void)
 
 void Waypoint::CacheWaypoint (void)
 {
-   int node = FindNearest (GetEntityOrigin (g_hostEntity), 50.0f);
+   int node = FindNearest (GetEntityOrigin (g_hostEntity), 75.0f);
 
    if (node == -1)
    {
@@ -1172,115 +1204,111 @@ void Waypoint::CacheWaypoint (void)
    CenterPrint ("Waypoint #%d has been put into memory", m_cacheWaypointIndex);
 }
 
-void Waypoint::CalculateWayzone (int index)
+void Waypoint::CalculateWayzone(int index)
 {
-   // calculate "wayzones" for the nearest waypoint to pentedict (meaning a dynamic distance area to vary waypoint origin)
+    // calculate "wayzones" for the nearest waypoint to pentedict (meaning a dynamic distance area to vary waypoint origin)
 
-   Path *path = m_paths[index];
-   Vector start, direction;
+    Path* path = m_paths[index];
+    Vector start, direction;
 
-   TraceResult tr;
-   bool wayBlocked = false;
+    TraceResult tr;
+    bool wayBlocked = false;
 
-   if (path->flags & (WAYPOINT_LADDER | WAYPOINT_GOAL | WAYPOINT_CAMP | WAYPOINT_RESCUE))
-   {
-       path->radius = 0.0f;
+    if ((path->flags & (WAYPOINT_LADDER | WAYPOINT_GOAL | WAYPOINT_CAMP | WAYPOINT_RESCUE | WAYPOINT_CROUCH)) || m_learnJumpWaypoint)
+    {
+        path->radius = 0.0f;
+        return;
+    }
 
-       return;
-   }
+    for (int i = 0; i < Const_MaxPathIndex; i++)
+    {
+        if (path->index[i] != -1 && (m_paths[path->index[i]]->flags & WAYPOINT_LADDER))
+        {
+            path->radius = 0.0f;
+            return;
+        }
+    }
 
-   for (int i = 0; i < Const_MaxPathIndex; i++)
-   {
-      if (path->index[i] != -1)
-      {
-         path->radius = 8.0f;
+    for (float scanDistance = 16.0f; scanDistance < 128.0f; scanDistance += 16.0f)
+    {
+        start = path->origin;
+        MakeVectors(nullvec);
 
-         return;
-      }
-   }
+        direction = g_pGlobals->v_forward * scanDistance;
+        direction = direction.ToAngles();
 
-   for (float scanDistance = 16.0f; scanDistance < 144.0f; scanDistance += 16.0f)
-   {
-      start = path->origin;
-      MakeVectors (nullvec);
+        path->radius = scanDistance;
 
-      direction = g_pGlobals->v_forward * scanDistance;
-      direction = direction.ToAngles ();
+        for (float circleRadius = 0.0f; circleRadius < 180.0f; circleRadius += 5.0f)
+        {
+            MakeVectors(direction);
 
-      path->radius = scanDistance;
+            Vector radiusStart = start - g_pGlobals->v_forward * scanDistance;
+            Vector radiusEnd = start + g_pGlobals->v_forward * scanDistance;
 
-      for (float circleRadius = 0.0f; circleRadius < 180.0f; circleRadius += 5.0f)
-      {
-         MakeVectors (direction);
+            TraceHull(radiusStart, radiusEnd, true, head_hull, null, &tr);
 
-         Vector radiusStart = start - g_pGlobals->v_forward * scanDistance;
-         Vector radiusEnd = start + g_pGlobals->v_forward * scanDistance;
-
-         TraceHull (radiusStart, radiusEnd, true, head_hull, null, &tr);
-
-         if (tr.flFraction < 1.0f)
-         {
-            TraceLine (radiusStart, radiusEnd, true, null, &tr);
-
-            if (FClassnameIs (tr.pHit, "func_door") || FClassnameIs (tr.pHit, "func_door_rotating"))
+            if (tr.flFraction < 1.0f)
             {
-               path->radius = 8.0f;
-               wayBlocked = true;
+                TraceLine(radiusStart, radiusEnd, true, null, &tr);
 
-               break;
+                if (FClassnameIs(tr.pHit, "func_door") || FClassnameIs(tr.pHit, "func_door_rotating"))
+                {
+                    path->radius = 0.0f;
+                    wayBlocked = true;
+
+                    break;
+                }
+
+                wayBlocked = true;
+                path->radius -= 16.0f;
+
+                break;
             }
 
-            wayBlocked = true;
-            path->radius -= 16.0f;
+            Vector dropStart = start + (g_pGlobals->v_forward * scanDistance);
+            Vector dropEnd = dropStart - Vector(0.0f, 0.0f, scanDistance + 60.0f);
 
+            TraceHull(dropStart, dropEnd, true, head_hull, null, &tr);
+
+            if (tr.flFraction >= 1.0f)
+            {
+                wayBlocked = true;
+                path->radius -= 16.0f;
+
+                break;
+            }
+            dropStart = start - (g_pGlobals->v_forward * scanDistance);
+            dropEnd = dropStart - Vector(0.0f, 0.0f, scanDistance + 60.0f);
+
+            TraceHull(dropStart, dropEnd, true, head_hull, null, &tr);
+
+            if (tr.flFraction >= 1.0f)
+            {
+                wayBlocked = true;
+                path->radius -= 16.0f;
+                break;
+            }
+
+            radiusEnd.z += 34.0f;
+            TraceHull(radiusStart, radiusEnd, true, head_hull, null, &tr);
+
+            if (tr.flFraction < 1.0f)
+            {
+                wayBlocked = true;
+                path->radius -= 16.0f;
+                break;
+            }
+
+            direction.y = AngleNormalize(direction.y + circleRadius);
+        }
+        if (wayBlocked)
             break;
-         }
+    }
+    path->radius -= 16.0f;
 
-         Vector dropStart = start + (g_pGlobals->v_forward * scanDistance);
-         Vector dropEnd = dropStart - Vector (0.0f, 0.0f, scanDistance + 60.0f);
-
-         TraceHull (dropStart, dropEnd, true, head_hull, null, &tr);
-
-         if (tr.flFraction >= 1.0f)
-         {
-            wayBlocked = true;
-            path->radius -= 16.0f;
-
-            break;
-         }
-         dropStart = start - (g_pGlobals->v_forward * scanDistance);
-         dropEnd = dropStart - Vector (0.0f, 0.0f, scanDistance + 60.0f);
-
-         TraceHull (dropStart, dropEnd, true, head_hull, null, &tr);
-
-         if (tr.flFraction >= 1.0f)
-         {
-            wayBlocked = true;
-            path->radius -= 16.0f;
-            break;
-         }
-
-         radiusEnd.z += 34.0f;
-         TraceHull (radiusStart, radiusEnd, true, head_hull, null, &tr);
-
-         if (tr.flFraction < 1.0f)
-         {
-            wayBlocked = true;
-            path->radius -= 16.0f;
-            break;
-         }
-
-         direction.y = AngleNormalize (direction.y + circleRadius);
-      }
-
-      if (wayBlocked)
-         break;
-   }
-
-   path->radius -= 16.0f;
-
-   if (path->radius < 8.0f)
-      path->radius = 8.0f;
+    if (path->radius < 0.0f)
+        path->radius = 0.0f;
 }
 
 
@@ -1770,7 +1798,7 @@ char *Waypoint::GetWaypointInfo (int id)
    }
 
    static char messageBuffer[1024];
-   sprintf (messageBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", (path->flags == 0 && !jumpPoint) ? " (none)" : "", path->flags & WAYPOINT_LIFT ? " LIFT" : "", path->flags & WAYPOINT_CROUCH ? " CROUCH" : "", path->flags & WAYPOINT_CROSSING ? " CROSSING" : "", path->flags & WAYPOINT_CAMP ? " CAMP" : "", path->flags & WAYPOINT_TERRORIST ? " TERRORIST" : "", path->flags & WAYPOINT_COUNTER ? " CT" : "", path->flags & WAYPOINT_SNIPER ? " SNIPER" : "", path->flags & WAYPOINT_GOAL ? " GOAL" : "", path->flags & WAYPOINT_LADDER ? " LADDER" : "", path->flags & WAYPOINT_RESCUE ? " RESCUE" : "", path->flags & WAYPOINT_DJUMP ? " JUMPHELP" : "", path->flags & WAYPOINT_AVOID ? " AVOID" : "", path->flags & WAYPOINT_USEBUTTON ? " USE BUTTON" : "", jumpPoint ? " JUMP" : "");
+   sprintf (messageBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", (path->flags == 0 && !jumpPoint) ? " (none)" : "", path->flags & WAYPOINT_LIFT ? " LIFT" : "", path->flags & WAYPOINT_CROUCH ? " CROUCH" : "", path->flags & WAYPOINT_CROSSING ? " CROSSING" : "", path->flags & WAYPOINT_CAMP ? " CAMP" : "", path->flags & WAYPOINT_TERRORIST ? " TERRORIST" : "", path->flags & WAYPOINT_COUNTER ? " CT" : "", path->flags & WAYPOINT_SNIPER ? " SNIPER" : "", path->flags & WAYPOINT_GOAL ? " GOAL" : "", path->flags & WAYPOINT_LADDER ? " LADDER" : "", path->flags & WAYPOINT_RESCUE ? " RESCUE" : "", path->flags & WAYPOINT_DJUMP ? " JUMPHELP" : "", path->flags & WAYPOINT_AVOID ? " AVOID" : "", path->flags & WAYPOINT_USEBUTTON ? " USE BUTTON" : "", path->flags & WAYPOINT_FALLCHECK ? " FALL CHECK" : "", jumpPoint ? " JUMP" : "");
 
    // SyPB Pro P.29 - Zombie Mode Hm Camp Waypoints
    if (path->flags & WAYPOINT_ZMHMCAMP)
@@ -2013,6 +2041,8 @@ void Waypoint::ShowWaypointMsg(void)
 					nodeColor = Color(255, 255, 255, 255);
                 else if (m_paths[i]->flags & WAYPOINT_AVOID)
                     nodeColor = Color(255, 0, 0, 255);
+                else if (m_paths[i]->flags & WAYPOINT_FALLCHECK)
+                    nodeColor = Color(238, 238, 228, 255);
                 else if (m_paths[i]->flags & WAYPOINT_USEBUTTON)
                     nodeColor = Color(0, 0, 255, 255);
                 else if (m_paths[i]->flags & WAYPOINT_ZMHMCAMP)
@@ -2081,7 +2111,7 @@ void Waypoint::ShowWaypointMsg(void)
 		m_pathDisplayTime = engine->GetTime() + 1.0f;
 
 		// draw the camplines
-		if (path->flags & WAYPOINT_CAMP || path->flags & WAYPOINT_ZMHMCAMP)
+		if (path->flags & WAYPOINT_CAMP)
 		{
 			const Vector &src = path->origin + Vector(0, 0, (path->flags & WAYPOINT_CROUCH) ? 18.0f : 36.0f); // check if it's a source
 

@@ -161,9 +161,6 @@ int BotControl::CreateBot(String name, int skill, int personality, int team, int
 		// SyPB Pro P.37 - skill level improve
 		else if (sypb_difficulty.GetInt() == 0)
 			skill = engine->RandomInt(1, 29);
-		// SyPB Pro P.45 - Bot Skill Level improve
-		else if (sypb_difficulty.GetInt() == -2)
-			skill = engine->RandomInt(1, 100);
 		else
 		{
 			int maxSkill = sypb_maxskill.GetInt();
@@ -922,6 +919,7 @@ void BotControl::CheckTeamEconomics (int team)
          numTeamPlayers++; // update count of team
       }
    }
+
    m_economicsGood[team] = true;
 
    if (numTeamPlayers <= 1)
@@ -984,7 +982,7 @@ Bot::Bot(edict_t *bot, int skill, int personality, int team, int member)
 	SET_CLIENT_KEYVALUE(clientIndex, buffer, "_vgui_menus", "0");
 	//SET_CLIENT_KEYVALUE(clientIndex, buffer, "model", "");
 
-	if (sypb_tagbots.GetBool())
+	if (sypb_tagbots.GetBool() == true)
 		SET_CLIENT_KEYVALUE(clientIndex, buffer, "*bot", "1");
 
 	rejectReason[0] = 0; // reset the reject reason template string

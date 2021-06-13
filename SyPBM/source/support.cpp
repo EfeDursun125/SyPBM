@@ -750,10 +750,11 @@ void AutoLoadGameMode(void)
 	{
 		"plugins-zplague",  // ZP4.3
 		"plugins-zp50_ammopacks", // ZP5.0
-		"plugins-zp50_money" // ZP5.0
+		"plugins-zp50_money", // ZP5.0
+		"plugins-ze"
 	};
 
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < 4; i++)
 	{
 		Plugin_INI = FormatBuffer("%s/addons/amxmodx/configs/%s.ini", GetModName(), zpGameVersion[i]);
 		if (TryFileOpen(Plugin_INI))
@@ -1322,7 +1323,7 @@ void ClientPrint (edict_t *ent, int dest, const char *format, ...)
    strcat (string, "\n");
 
    if (dest & 0x3ff)
-      (*g_engfuncs.pfnClientPrintf) (ent, static_cast <PRINT_TYPE> (dest &= ~0x3ff), FormatBuffer ("[SyPB] %s", string));
+      (*g_engfuncs.pfnClientPrintf) (ent, static_cast <PRINT_TYPE> (dest &= ~0x3ff), FormatBuffer ("[SyPBM] %s", string));
    else
       (*g_engfuncs.pfnClientPrintf) (ent, static_cast <PRINT_TYPE> (dest), string);
 

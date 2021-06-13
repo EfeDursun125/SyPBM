@@ -1081,12 +1081,18 @@ void GameDLLInit (void)
    DetectCSVersion (); // determine version of currently running cs
 }
 
+extern ConVar sypbm_force_flashlight;
+
 int Spawn(edict_t *ent)
 {
-   // this function asks the game DLL to spawn (i.e, give a physical existence in the virtual
-   // world, in other words to 'display') the entity pointed to by ent in the game. The
-   // Spawn() function is one of the functions any entity is supposed to have in the game DLL,
-   // and any MOD is supposed to implement one for each of its entities.
+    // this function asks the game DLL to spawn (i.e, give a physical existence in the virtual
+    // world, in other words to 'display') the entity pointed to by ent in the game. The
+    // Spawn() function is one of the functions any entity is supposed to have in the game DLL,
+    // and any MOD is supposed to implement one for each of its entities.
+
+	// SyPBM 1.52 - zp & biohazard flashlight support
+	if (sypbm_force_flashlight.GetInt() == 1 && !(ent->v.effects & EF_DIMLIGHT))
+		ent->v.impulse = 100;
 
 	const char *entityClassname = STRING(ent->v.classname);
 
@@ -1398,7 +1404,7 @@ void ClientCommand(edict_t *ent)
 				switch (selection)
 				{
 				case 1:
-					g_waypoint->ToggleFlags(WAYPOINT_AVOID);
+					g_waypoint->ToggleFlags(WAYPOINT_FALLCHECK);
 					break;
 
 				case 2:
