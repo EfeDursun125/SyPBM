@@ -5,18 +5,12 @@ The Developer of the SyPB doesn't have time for develop anymore, original projec
 
 # Last SyPBM changes
 - Human AI improve
-- Human bots now can use granades
-- Human bots now avoid zombies while pathing
-- Human bots now faster aim in zombie mode (based skill)
+- Fixed bot jumps
 - Zombie AI improve
-- Zombie bots now can boost other zombies for reach high ground (use zombie boosting path for waypoints)
-- Zombie bots now can use different paths for reach humans
-- Zombie bots increased attack range
-- New Avoid waypoints, bots will mostly avoid these waypoints, use that for danger areas (fire, water, breakable ground, high falls)
-- No hostage waypoint is removed, bots will never use crouch & ladder & jump waypoints if they have hostages
-- Bots will don't use enemy team important waypoints
-- Now jump path can usable in "Create Path" menu
+- New fallcheck waypoint (experimental)
 - AI Improvements
+- Bugfix
+- Now human bots can use flashlight, use sypbm_force_flashlight command.
 
 # How to install
 1. You must have original sypb & metamod.
