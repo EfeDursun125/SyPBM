@@ -7,12 +7,18 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sypbm", "sypbm.vcxproj", "{
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		SyPBM_Debug|ARM = SyPBM_Debug|ARM
 		SyPBM_Debug|x86 = SyPBM_Debug|x86
+		SyPBM_Release|ARM = SyPBM_Release|ARM
 		SyPBM_Release|x86 = SyPBM_Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C232645A-3B99-48F4-A1F3-F20CF0A9568B}.SyPBM_Debug|ARM.ActiveCfg = SyPBM_Debug|ARM
+		{C232645A-3B99-48F4-A1F3-F20CF0A9568B}.SyPBM_Debug|ARM.Build.0 = SyPBM_Debug|ARM
 		{C232645A-3B99-48F4-A1F3-F20CF0A9568B}.SyPBM_Debug|x86.ActiveCfg = SyPBM_Debug|Win32
 		{C232645A-3B99-48F4-A1F3-F20CF0A9568B}.SyPBM_Debug|x86.Build.0 = SyPBM_Debug|Win32
+		{C232645A-3B99-48F4-A1F3-F20CF0A9568B}.SyPBM_Release|ARM.ActiveCfg = SyPBM_Release|ARM
+		{C232645A-3B99-48F4-A1F3-F20CF0A9568B}.SyPBM_Release|ARM.Build.0 = SyPBM_Release|ARM
 		{C232645A-3B99-48F4-A1F3-F20CF0A9568B}.SyPBM_Release|x86.ActiveCfg = SyPBM_Release|Win32
 		{C232645A-3B99-48F4-A1F3-F20CF0A9568B}.SyPBM_Release|x86.Build.0 = SyPBM_Release|Win32
 	EndGlobalSection
