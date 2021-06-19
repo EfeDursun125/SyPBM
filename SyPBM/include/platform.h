@@ -73,11 +73,11 @@
 #pragma comment (linker, "/SECTION:.data,RW")
 #endif
 
-typedef int ( *EntityAPI_t) (DLL_FUNCTIONS *, int);
-typedef int ( *NewEntityAPI_t) (NEW_DLL_FUNCTIONS *, int *);
-typedef int ( *BlendAPI_t) (int, void **, void *, float (*)[3][4], float (*)[128][3][4]);
-typedef void (__stdcall *FuncPointers_t) (enginefuncs_t *, globalvars_t *);
-typedef void (*EntityPtr_t) (entvars_t *);
+typedef int (*EntityAPI_t) (DLL_FUNCTIONS*, int);
+typedef int (*NewEntityAPI_t) (NEW_DLL_FUNCTIONS*, int*);
+typedef int (*BlendAPI_t) (int, void**, void*, float(*)[3][4], float(*)[128][3][4]);
+typedef void(__stdcall* FuncPointers_t) (enginefuncs_t*, globalvars_t*);
+typedef void (*EntityPtr_t) (entvars_t*);
 
 #elif defined (PLATFORM_LINUX32) || defined (PLATFORM_LINUX64)
 
@@ -91,71 +91,71 @@ typedef void (*EntityPtr_t) (entvars_t *);
 #define DLL_RETENTRY return
 #define DLL_GIVEFNPTRSTODLL extern "C" void
 
-inline uint32 _lrotl (uint32 x, int r) { return (x << r) | (x >> (sizeof (x) * 8 - r));}
+inline uint32 _lrotl(uint32 x, int r) { return (x << r) | (x >> (sizeof(x) * 8 - r)); }
 
-typedef int (*EntityAPI_t) (DLL_FUNCTIONS *, int);
-typedef int (*NewEntityAPI_t) (NEW_DLL_FUNCTIONS *, int *);
-typedef int (*BlendAPI_t) (int, void **, void *, float (*)[3][4], float (*)[128][3][4]);
-typedef void (*FuncPointers_t) (enginefuncs_t *, globalvars_t *);
-typedef void (*EntityPtr_t) (entvars_t *);
+typedef int (*EntityAPI_t) (DLL_FUNCTIONS*, int);
+typedef int (*NewEntityAPI_t) (NEW_DLL_FUNCTIONS*, int*);
+typedef int (*BlendAPI_t) (int, void**, void*, float(*)[3][4], float(*)[128][3][4]);
+typedef void (*FuncPointers_t) (enginefuncs_t*, globalvars_t*);
+typedef void (*EntityPtr_t) (entvars_t*);
 
 #else
 #error "Platform unrecognized."
 #endif
 
-extern "C" void *__stdcall GetProcAddress(void *,const char *);
-extern "C" void *__stdcall LoadLibraryA (const char *);
-extern "C" int __stdcall FreeLibrary (void *);
+extern "C" void* __stdcall GetProcAddress(void*, const char*);
+extern "C" void* __stdcall LoadLibraryA(const char*);
+extern "C" int __stdcall FreeLibrary(void*);
 
 // library wrapper
 class Library
 {
 private:
-   void *m_ptr;
+    void* m_ptr;
 
 public:
 
-   Library (const char *fileName)
-   {
-      if (fileName == null)
-         return;
+    Library(const char* fileName)
+    {
+        if (fileName == null)
+            return;
 
 #ifdef PLATFORM_WIN32
-      m_ptr = LoadLibraryA (fileName);
+        m_ptr = LoadLibraryA(fileName);
 #else
-      m_ptr = dlopen (fileName, RTLD_NOW);
+        m_ptr = dlopen(fileName, RTLD_NOW);
 #endif
-   }
+    }
 
-   ~Library (void)
-   {
-      if (!IsLoaded ())
-         return;
+    ~Library(void)
+    {
+        if (!IsLoaded())
+            return;
 
 #ifdef PLATFORM_WIN32
-      FreeLibrary (m_ptr);
+        FreeLibrary(m_ptr);
 #else
-      dlclose (m_ptr);
+        dlclose(m_ptr);
 #endif
-   }
+    }
 
 public:
-   void *GetFunctionAddr (const char *functionName)
-   {
-      if (!IsLoaded ())
-         return null;
+    void* GetFunctionAddr(const char* functionName)
+    {
+        if (!IsLoaded())
+            return null;
 
 #ifdef PLATFORM_WIN32
-     return GetProcAddress (m_ptr, functionName);
+        return GetProcAddress(m_ptr, functionName);
 #else
-      return dlsym (m_ptr, functionName);
+        return dlsym(m_ptr, functionName);
 #endif
-   }
+    }
 
-   inline bool IsLoaded (void) const
-   {
-      return m_ptr != null;
-   }
+    inline bool IsLoaded(void) const
+    {
+        return m_ptr != null;
+    }
 };
 
 #endif

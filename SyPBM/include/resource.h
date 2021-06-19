@@ -50,9 +50,9 @@
 #define SUPPORT_SWNPC_VERSION_F 1.48
 
 // SyPBM Version
-#define PRODUCT_VERSION_DWORD 1,52,20210623,700 // yyyy/mm/dd  
-#define PRODUCT_VERSION "1.52"
-#define PRODUCT_VERSION_F 1.52
+#define PRODUCT_VERSION_DWORD 1,53,20210619,702 // yyyy/mm/dd  
+#define PRODUCT_VERSION "1.53"
+#define PRODUCT_VERSION_F 1.53
 
 // general product information
 #define PRODUCT_NAME "SyPBM"
@@ -65,7 +65,7 @@
 #define PRODUCT_LEGAL "Half-Life, Counter-Strike, Steam, Valve is a trademark of Valve Corporation"
 #define PRODUCT_ORIGINAL_NAME "sypbm.dll"
 #define PRODUCT_INTERNAL_NAME "sypbm"
-#define PRODUCT_SUPPORT_VERSION "1.6"
+#define PRODUCT_SUPPORT_VERSION "1.0 - CZ"
 #define PRODUCT_DATE __DATE__
 
 // product optimization type (we're not using crt builds anymore)
