@@ -24,65 +24,65 @@
 
 #include <core.h>
 
-ConVar sypb_quota ("sypbm_quota", "10");
-ConVar sypb_forceteam ("sypbm_forceteam", "any");
-ConVar sypb_auto_players ("sypbm_auto_players", "-1");
+ConVar sypb_quota("sypbm_quota", "20");
+ConVar sypb_forceteam("sypbm_forceteam", "any");
+ConVar sypb_auto_players("sypbm_auto_players", "-1");
 
 // SyPB Pro P.47 - New Cvar 'sypb_quota_save'
 ConVar sypb_quota_save("sypbm_quota_save", "-1");
 
-ConVar sypb_difficulty ("sypbm_difficulty", "-1");
-ConVar sypb_minskill ("sypbm_minskill", "1");
-ConVar sypb_maxskill ("sypbm_maxskill", "100"); 
+ConVar sypb_difficulty("sypbm_difficulty", "4");
+ConVar sypb_minskill("sypbm_minskill", "1");
+ConVar sypb_maxskill("sypbm_maxskill", "100");
 
-ConVar sypb_tagbots ("sypbm_nametag", "1");
+ConVar sypbm_nametag("sypbm_nametag", "2");
 
-ConVar sypb_join_after_player ("sypbm_join_after_player", "0"); 
+ConVar sypb_join_after_player("sypbm_join_after_player", "0");
 
-BotControl::BotControl (void)
+BotControl::BotControl(void)
 {
-   // this is a bot manager class constructor
+	// this is a bot manager class constructor
 
-   m_lastWinner = -1;
+	m_lastWinner = -1;
 
-   m_economicsGood[TEAM_TERRORIST] = true;
-   m_economicsGood[TEAM_COUNTER] = true;
+	m_economicsGood[TEAM_TERRORIST] = true;
+	m_economicsGood[TEAM_COUNTER] = true;
 
-   memset (m_bots, 0, sizeof (m_bots));
-   InitQuota ();
+	memset(m_bots, 0, sizeof(m_bots));
+	InitQuota();
 }
 
-BotControl::~BotControl (void)
+BotControl::~BotControl(void)
 {
-   // this is a bot manager class destructor, do not use engine->GetMaxClients () here !!
+	// this is a bot manager class destructor, do not use engine->GetMaxClients () here !!
 
-   for (int i = 0; i < 32; i++)
-   {
-      if (m_bots[i])
-      {
-         delete m_bots[i];
-         m_bots[i] = null;
-      }
-   }
+	for (int i = 0; i < 32; i++)
+	{
+		if (m_bots[i])
+		{
+			delete m_bots[i];
+			m_bots[i] = null;
+		}
+	}
 }
 
-void BotControl::CallGameEntity (entvars_t *vars)
+void BotControl::CallGameEntity(entvars_t* vars)
 {
-   // this function calls gamedll player() function, in case to create player entity in game
+	// this function calls gamedll player() function, in case to create player entity in game
 
-   if (g_isMetamod)
-   {
-      CALL_GAME_ENTITY (PLID, "player", vars);
-      return;
-   }
+	if (g_isMetamod)
+	{
+		CALL_GAME_ENTITY(PLID, "player", vars);
+		return;
+	}
 
-   static EntityPtr_t playerFunction = null;
+	static EntityPtr_t playerFunction = null;
 
-   if (playerFunction == null)
-      playerFunction = (EntityPtr_t) g_gameLib->GetFunctionAddr ("player");
+	if (playerFunction == null)
+		playerFunction = (EntityPtr_t)g_gameLib->GetFunctionAddr("player");
 
-   if (playerFunction != null)
-      (*playerFunction) (vars);
+	if (playerFunction != null)
+		(*playerFunction) (vars);
 }
 
 // SyPB Pro P.20 - Bot Name
@@ -94,7 +94,7 @@ int BotControl::CreateBot(String name, int skill, int personality, int team, int
 #if defined(PRODUCT_DEV_VERSION)
 	// SyPB Pro P.34 - Preview DeadLine
 	time_t rawtime;
-	struct tm * timeinfo;
+	struct tm* timeinfo;
 	time(&rawtime);
 	timeinfo = localtime(&rawtime);
 	int year = timeinfo->tm_year + 1900, mon = timeinfo->tm_mon + 1, day = timeinfo->tm_mday;
@@ -122,15 +122,15 @@ int BotControl::CreateBot(String name, int skill, int personality, int team, int
 			return -3;
 	}
 
-	edict_t *bot = null;
+	edict_t* bot = null;
 
 	if (g_numWaypoints < 1) // don't allow creating bots with no waypoints loaded
 	{
 		// SyPB Pro P.39 - Add Msg
-		ServerPrint("Not Find Waypoint, Cannot Add SyPB");
-		ServerPrint("You can input 'sypb sgdwp on' to make waypoint");
-		CenterPrint("Not Find Waypoint, Cannot Add SyPB");
-		CenterPrint("You can input 'sypb sgdwp on' to make waypoint");
+		ServerPrint("No any waypoints for this map, Cannot Add SyPBM");
+		ServerPrint("You can input 'sypb wp menu' to make waypoint");
+		CenterPrint("No any waypoints for this map, Cannot Add SyPBM");
+		CenterPrint("You can input 'sypb wp menu' to make waypoint");
 
 		extern ConVar sypb_lockzbot;
 		if (sypb_lockzbot.GetBool())
@@ -146,21 +146,21 @@ int BotControl::CreateBot(String name, int skill, int personality, int team, int
 		CenterPrint("Waypoints has been changed. Load waypoints again...");
 		return -1;
 	}
-	
+
 	// SyPB Pro P.35 - New skill level
 	if (skill <= 0 || skill > 100)
 	{
 		if (sypb_difficulty.GetInt() >= 4)
 			skill = 100;
 		else if (sypb_difficulty.GetInt() == 3)
-			skill = engine->RandomInt(80, 99);
+			skill = engine->RandomInt(79, 99);
 		else if (sypb_difficulty.GetInt() == 2)
 			skill = engine->RandomInt(50, 79);
 		else if (sypb_difficulty.GetInt() == 1)
-			skill = engine->RandomInt(30, 49);
+			skill = engine->RandomInt(30, 50);
 		// SyPB Pro P.37 - skill level improve
 		else if (sypb_difficulty.GetInt() == 0)
-			skill = engine->RandomInt(1, 29);
+			skill = engine->RandomInt(1, 30);
 		else
 		{
 			int maxSkill = sypb_maxskill.GetInt();
@@ -176,17 +176,14 @@ int BotControl::CreateBot(String name, int skill, int personality, int team, int
 
 	if (personality < 0 || personality > 2)
 	{
-		int randomPrecent = engine->RandomInt(0, 100);
+		int randomPrecent = engine->RandomInt(1, 3);
 
-		if (randomPrecent < 50)
+		if (randomPrecent == 1)
 			personality = PERSONALITY_NORMAL;
+		else if (randomPrecent == 2)
+			personality = PERSONALITY_RUSHER;
 		else
-		{
-			if (engine->RandomInt(0, randomPrecent) < randomPrecent * 0.5)
-				personality = PERSONALITY_CAREFUL;
-			else
-				personality = PERSONALITY_RUSHER;
-		}
+			personality = PERSONALITY_CAREFUL;
 	}
 
 	char outputName[33];
@@ -211,12 +208,12 @@ int BotControl::CreateBot(String name, int skill, int personality, int team, int
 
 			while (nameUse)
 			{
-				NameItem &botName = g_botNames.GetRandomElement();
+				NameItem& botName = g_botNames.GetRandomElement();
 				if (!botName.isUsed)
 				{
 					nameUse = false;
 					botName.isUsed = true;
-					sprintf(outputName, "%s", (char *)botName.name);
+					sprintf(outputName, "%s", (char*)botName.name);
 				}
 			}
 		}
@@ -224,11 +221,16 @@ int BotControl::CreateBot(String name, int skill, int personality, int team, int
 			sprintf(outputName, "bot%i", engine->RandomInt(-9999, 9999)); // just pick ugly random name
 	}
 	else
-		sprintf(outputName, "%s", (char *)name);
+		sprintf(outputName, "%s", (char*)name);
 
 	// SyPB Pro P.37 - Bot Name / Tag
 	char botName[64];
-	sprintf(botName, "%s%s", sypb_tagbots.GetBool () == true ? "[SyPBM] " : "", outputName);
+	if (sypbm_nametag.GetInt() == 2)
+		snprintf(botName, sizeof botName, "[SyPBM] %s (%d)", outputName, skill);
+	else if (sypbm_nametag.GetInt() == 1)
+		snprintf(botName, sizeof botName, "[SyPBM] %s", outputName);
+	else
+		strncpy(botName, outputName, sizeof botName);
 
 	if (FNullEnt((bot = (*g_engfuncs.pfnCreateFakeClient) (botName))))
 	{
@@ -252,60 +254,60 @@ int BotControl::CreateBot(String name, int skill, int personality, int team, int
 }
 
 
-int BotControl::GetIndex (edict_t *ent)
+int BotControl::GetIndex(edict_t* ent)
 {
-   // this function returns index of bot (using own bot array)
+	// this function returns index of bot (using own bot array)
 
-   if (FNullEnt (ent))
-      return -1;
+	if (FNullEnt(ent))
+		return -1;
 
-   int index = ENTINDEX (ent) - 1;
+	int index = ENTINDEX(ent) - 1;
 
-   if (index < 0 || index >= 32)
-      return -1;
+	if (index < 0 || index >= 32)
+		return -1;
 
-   if (m_bots[index] != null)
-      return index;
+	if (m_bots[index] != null)
+		return index;
 
-   return -1; // if no edict, return -1;
+	return -1; // if no edict, return -1;
 }
 
-Bot *BotControl::GetBot (int index)
+Bot* BotControl::GetBot(int index)
 {
-   // this function finds a bot specified by index, and then returns pointer to it (using own bot array)
+	// this function finds a bot specified by index, and then returns pointer to it (using own bot array)
 
-   if (index < 0 || index >= 32)
-      return null;
+	if (index < 0 || index >= 32)
+		return null;
 
-   if (m_bots[index] != null)
-      return m_bots[index];
+	if (m_bots[index] != null)
+		return m_bots[index];
 
-   return null; // no bot
+	return null; // no bot
 }
 
-Bot *BotControl::GetBot (edict_t *ent)
+Bot* BotControl::GetBot(edict_t* ent)
 {
-   // same as above, but using bot entity
+	// same as above, but using bot entity
 
-   return GetBot (GetIndex (ent));
+	return GetBot(GetIndex(ent));
 }
 
-Bot *BotControl::FindOneValidAliveBot (void)
+Bot* BotControl::FindOneValidAliveBot(void)
 {
-   // this function finds one bot, alive bot :)
+	// this function finds one bot, alive bot :)
 
-   Array <int> foundBots;
+	Array <int> foundBots;
 
-   for (int i = 0; i < engine->GetMaxClients (); i++)
-   {
-      if (m_bots[i] != null && IsAlive (m_bots[i]->GetEntity ()))
-         foundBots.Push (i);
-   }
+	for (int i = 0; i < engine->GetMaxClients(); i++)
+	{
+		if (m_bots[i] != null && IsAlive(m_bots[i]->GetEntity()))
+			foundBots.Push(i);
+	}
 
-   if (!foundBots.IsEmpty ())
-      return m_bots[foundBots.GetRandomElement ()];
+	if (!foundBots.IsEmpty())
+		return m_bots[foundBots.GetRandomElement()];
 
-   return null;
+	return null;
 }
 
 // SyPB Pro P.45 - Bot think improve
@@ -330,7 +332,7 @@ void BotControl::Think(void)
 			//m_bots[i]->m_thinkTimer = engine->GetTime() + (1.0f / 24.9f);
 
 			// SyPB Pro P.48 - Bot think improve
-			m_bots[i]->m_thinkTimer = engine->GetTime() + ((1.0f / 24.9f) * engine->RandomFloat (0.90f, 1.05f));
+			m_bots[i]->m_thinkTimer = engine->GetTime() + ((1.0f / 24.9f) * engine->RandomFloat(0.90f, 1.05f));
 
 			m_bots[i]->Think();
 
@@ -348,45 +350,45 @@ void BotControl::Think(void)
 	}
 }
 
-void BotControl::AddBot (const String &name, int skill, int personality, int team, int member)
+void BotControl::AddBot(const String& name, int skill, int personality, int team, int member)
 {
-   // this function putting bot creation process to queue to prevent engine crashes
+	// this function putting bot creation process to queue to prevent engine crashes
 
-   CreateItem queueID;
+	CreateItem queueID;
 
-   // fill the holder
-   queueID.name = name;
-   queueID.skill = skill;
-   queueID.personality = personality;
-   queueID.team = team;
-   queueID.member = member;
+	// fill the holder
+	queueID.name = name;
+	queueID.skill = skill;
+	queueID.personality = personality;
+	queueID.team = team;
+	queueID.member = member;
 
-   // put to queue
-   m_creationTab.Push (queueID);
+	// put to queue
+	m_creationTab.Push(queueID);
 
-   // keep quota number up to date
-   if (GetBotsNum () + 1 > sypb_quota.GetInt ())
-      sypb_quota.SetInt (GetBotsNum () + 1);
+	// keep quota number up to date
+	if (GetBotsNum() + 1 > sypb_quota.GetInt())
+		sypb_quota.SetInt(GetBotsNum() + 1);
 }
 
-void BotControl::AddBot (const String &name, const String &skill, const String &personality, const String &team, const String &member)
+void BotControl::AddBot(const String& name, const String& skill, const String& personality, const String& team, const String& member)
 {
-   // this function is same as the function above, but accept as parameters string instead of integers
+	// this function is same as the function above, but accept as parameters string instead of integers
 
-   CreateItem queueID;
-   const String &any = "*";
+	CreateItem queueID;
+	const String& any = "*";
 
-   queueID.name = (name.IsEmpty () || (name == any)) ?  String ("\0") : name;
-   queueID.skill = (skill.IsEmpty () || (skill == any)) ? -1 : skill;
-   queueID.team = (team.IsEmpty () || (team == any)) ? -1 : team;
-   queueID.member = (member.IsEmpty () || (member == any)) ? -1 : member;
-   queueID.personality = (personality.IsEmpty () || (personality == any)) ? -1 : personality;
+	queueID.name = (name.IsEmpty() || (name == any)) ? String("\0") : name;
+	queueID.skill = (skill.IsEmpty() || (skill == any)) ? -1 : skill;
+	queueID.team = (team.IsEmpty() || (team == any)) ? -1 : team;
+	queueID.member = (member.IsEmpty() || (member == any)) ? -1 : member;
+	queueID.personality = (personality.IsEmpty() || (personality == any)) ? -1 : personality;
 
-   m_creationTab.Push (queueID);
+	m_creationTab.Push(queueID);
 
-   // keep quota number up to date
-   if (GetBotsNum () + 1 > sypb_quota.GetInt ())
-      sypb_quota.SetInt (GetBotsNum () + 1);
+	// keep quota number up to date
+	if (GetBotsNum() + 1 > sypb_quota.GetInt())
+		sypb_quota.SetInt(GetBotsNum() + 1);
 }
 
 // SyPB Pro P.43 - New Cvar for auto sypb number
@@ -407,7 +409,7 @@ void BotControl::CheckBotNum(void)
 		File fp(FormatBuffer("%s/addons/sypb/SyPB.cfg", GetModName()), "rt+");
 		if (fp.IsValid())
 		{
-			const char quotaCvar[11] = {'s', 'y', 'p', 'b', '_', 'q', 'u', 'o', 't', 'a', ' '};
+			const char quotaCvar[11] = { 's', 'y', 'p', 'b', '_', 'q', 'u', 'o', 't', 'a', ' ' };
 
 			char line[256];
 			bool changeed = false;
@@ -495,12 +497,12 @@ void BotControl::CheckBotNum(void)
 		if (needBotNumber <= 0)
 			needBotNumber = 0;
 	}
-	
+
 	sypb_quota.SetInt(needBotNumber);
 }
 
 // SyPB Pro P.30 - AMXX API
-int BotControl::AddBotAPI(const String &name, int skill, int team)
+int BotControl::AddBotAPI(const String& name, int skill, int team)
 {
 	if (g_botManager->GetBotsNum() + 1 > sypb_quota.GetInt())
 		sypb_quota.SetInt(g_botManager->GetBotsNum() + 1);
@@ -527,153 +529,153 @@ int BotControl::AddBotAPI(const String &name, int skill, int team)
 	return resultOfCall;  // SyPB Pro P.34 - AMXX API
 }
 
-void BotControl::MaintainBotQuota (void)
+void BotControl::MaintainBotQuota(void)
 {
-   // this function keeps number of bots up to date, and don't allow to maintain bot creation
-   // while creation process in process.
+	// this function keeps number of bots up to date, and don't allow to maintain bot creation
+	// while creation process in process.
 
-   if (!m_creationTab.IsEmpty () && m_maintainTime < engine->GetTime ())
-   {
-      CreateItem last = m_creationTab.Pop ();
+	if (!m_creationTab.IsEmpty() && m_maintainTime < engine->GetTime())
+	{
+		CreateItem last = m_creationTab.Pop();
 
-      int resultOfCall = CreateBot (last.name, last.skill, last.personality, last.team, last.member);
+		int resultOfCall = CreateBot(last.name, last.skill, last.personality, last.team, last.member);
 
-	  // check the result of creation
-	  if (resultOfCall == -1)
-	  {
-		  m_creationTab.RemoveAll(); // something wrong with waypoints, reset tab of creation
-		  sypb_quota.SetInt(0); // reset quota
+		// check the result of creation
+		if (resultOfCall == -1)
+		{
+			m_creationTab.RemoveAll(); // something wrong with waypoints, reset tab of creation
+			sypb_quota.SetInt(0); // reset quota
 
-		  // SyPB Pro P.23 - SgdWP
-		  ChartPrint("[SyPBM] You can input [sypbm sgdwp on] make the new waypoints!!");
-	  }
-	  else if (resultOfCall == -2)
-	  {
-		  m_creationTab.RemoveAll(); // maximum players reached, so set quota to maximum players
-		  sypb_quota.SetInt(GetBotsNum());
-	  }
+			// SyPB Pro P.23 - SgdWP
+			ChartPrint("[SyPBM] You can input [sypbm sgdwp on] make the new waypoints!!");
+		}
+		else if (resultOfCall == -2)
+		{
+			m_creationTab.RemoveAll(); // maximum players reached, so set quota to maximum players
+			sypb_quota.SetInt(GetBotsNum());
+		}
 
-	  m_maintainTime = engine->GetTime() + 0.15f;
-   }
+		m_maintainTime = engine->GetTime() + 0.15f;
+	}
 
-   // SyPB Pro P.43 - Base improve and New Cvar Setting
-   g_botManager->CheckBotNum();
-   if (m_maintainTime < engine->GetTime())
-   {
-	   int botNumber = GetBotsNum();
+	// SyPB Pro P.43 - Base improve and New Cvar Setting
+	g_botManager->CheckBotNum();
+	if (m_maintainTime < engine->GetTime())
+	{
+		int botNumber = GetBotsNum();
 
-	   if (botNumber > sypb_quota.GetInt())
-		   RemoveRandom();
-	   else if (botNumber < sypb_quota.GetInt() && botNumber < engine->GetMaxClients())
-		   AddRandom();
+		if (botNumber > sypb_quota.GetInt())
+			RemoveRandom();
+		else if (botNumber < sypb_quota.GetInt() && botNumber < engine->GetMaxClients())
+			AddRandom();
 
-	   if (sypb_quota.GetInt() > engine->GetMaxClients())
-		   sypb_quota.SetInt(engine->GetMaxClients());
-	   else if (sypb_quota.GetInt() < 0)
-		   sypb_quota.SetInt(0);
+		if (sypb_quota.GetInt() > engine->GetMaxClients())
+			sypb_quota.SetInt(engine->GetMaxClients());
+		else if (sypb_quota.GetInt() < 0)
+			sypb_quota.SetInt(0);
 
-	   m_maintainTime = engine->GetTime() + 0.18f;
-   }
+		m_maintainTime = engine->GetTime() + 0.18f;
+	}
 }
 
-void BotControl::InitQuota (void)
+void BotControl::InitQuota(void)
 {
-   m_maintainTime = engine->GetTime () + 2.0f;
-   m_creationTab.RemoveAll ();
+	m_maintainTime = engine->GetTime() + 2.0f;
+	m_creationTab.RemoveAll();
 
-   // SyPB Pro P.42 - Entity Action - Reset
-   for (int i = 0; i < entityNum; i++)
-	   SetEntityActionData(i);
+	// SyPB Pro P.42 - Entity Action - Reset
+	for (int i = 0; i < entityNum; i++)
+		SetEntityActionData(i);
 }
 
-void BotControl::FillServer (int selection, int personality, int skill, int numToAdd)
+void BotControl::FillServer(int selection, int personality, int skill, int numToAdd)
 {
-   // this function fill server with bots, with specified team & personality
+	// this function fill server with bots, with specified team & personality
 
-   if (GetBotsNum () >= engine->GetMaxClients () - GetHumansNum ())
-      return;
+	if (GetBotsNum() >= engine->GetMaxClients() - GetHumansNum())
+		return;
 
-   if (selection == 1 || selection == 2)
-   {
-      CVAR_SET_STRING ("mp_limitteams", "0");
-      CVAR_SET_STRING ("mp_autoteambalance", "0");
-   }
-   else
-      selection = 5;
+	if (selection == 1 || selection == 2)
+	{
+		CVAR_SET_STRING("mp_limitteams", "0");
+		CVAR_SET_STRING("mp_autoteambalance", "0");
+	}
+	else
+		selection = 5;
 
-   char teamDescs[6][12] =
-   {
-      "",
-      {"Terrorists"},
-      {"CTs"},
-      "",
-      "",
-      {"Random"},
-   };
+	char teamDescs[6][12] =
+	{
+	   "",
+	   {"Terrorists"},
+	   {"CTs"},
+	   "",
+	   "",
+	   {"Random"},
+	};
 
-   int toAdd = numToAdd == -1 ? engine->GetMaxClients () - (GetHumansNum () + GetBotsNum ()) : numToAdd;
+	int toAdd = numToAdd == -1 ? engine->GetMaxClients() - (GetHumansNum() + GetBotsNum()) : numToAdd;
 
-   for (int i = 0; i <= toAdd; i++)
-   {
-      // since we got constant skill from menu (since creation process call automatic), we need to manually
-      // randomize skill here, on given skill there.
-      int randomizedSkill = 0;
+	for (int i = 0; i <= toAdd; i++)
+	{
+		// since we got constant skill from menu (since creation process call automatic), we need to manually
+		// randomize skill here, on given skill there.
+		int randomizedSkill = 0;
 
-      if (skill >= 0 && skill <= 20)
-         randomizedSkill = engine->RandomInt (0, 20);
-      else if (skill >= 20 && skill <= 40)
-         randomizedSkill = engine->RandomInt (20, 40);
-      else if (skill >= 40 && skill <= 60)
-         randomizedSkill = engine->RandomInt (40, 60);
-      else if (skill >= 60 && skill <= 80)
-         randomizedSkill = engine->RandomInt (60, 80);
-      else if (skill >= 80 && skill <= 99)
-         randomizedSkill = engine->RandomInt (80, 99);
-      else if (skill == 100)
-         randomizedSkill = skill;
+		if (skill >= 0 && skill <= 20)
+			randomizedSkill = engine->RandomInt(0, 20);
+		else if (skill >= 20 && skill <= 40)
+			randomizedSkill = engine->RandomInt(20, 40);
+		else if (skill >= 40 && skill <= 60)
+			randomizedSkill = engine->RandomInt(40, 60);
+		else if (skill >= 60 && skill <= 80)
+			randomizedSkill = engine->RandomInt(60, 80);
+		else if (skill >= 80 && skill <= 99)
+			randomizedSkill = engine->RandomInt(80, 99);
+		else if (skill == 100)
+			randomizedSkill = skill;
 
-      AddBot ("", randomizedSkill, personality, selection, -1);
-   }
+		AddBot("", randomizedSkill, personality, selection, -1);
+	}
 
-   sypb_quota.SetInt (toAdd);
-   CenterPrint ("Fill Server with %s bots...", &teamDescs[selection][0]);
+	sypb_quota.SetInt(toAdd);
+	CenterPrint("Fill Server with %s bots...", &teamDescs[selection][0]);
 }
 
-void BotControl::RemoveAll (void)
+void BotControl::RemoveAll(void)
 {
-   // this function drops all bot clients from server (this function removes only sypb's)`q
+	// this function drops all bot clients from server (this function removes only sypb's)`q
 
-   CenterPrint ("Bots are removed from server.");
+	CenterPrint("Bots are removed from server.");
 
-   for (int i = 0; i < engine->GetMaxClients (); i++)
-   {
-      if (m_bots[i] != null)  // is this slot used?
-         m_bots[i]->Kick ();
-   }
-   m_creationTab.RemoveAll ();
+	for (int i = 0; i < engine->GetMaxClients(); i++)
+	{
+		if (m_bots[i] != null)  // is this slot used?
+			m_bots[i]->Kick();
+	}
+	m_creationTab.RemoveAll();
 
-   // reset cvars
-   sypb_quota.SetInt (0);
-   sypb_auto_players.SetInt(-1);
+	// reset cvars
+	sypb_quota.SetInt(0);
+	sypb_auto_players.SetInt(-1);
 }
 
-void BotControl::RemoveFromTeam (Team team, bool removeAll)
+void BotControl::RemoveFromTeam(Team team, bool removeAll)
 {
-   // this function remove random bot from specified team (if removeAll value = 1 then removes all players from team)
+	// this function remove random bot from specified team (if removeAll value = 1 then removes all players from team)
 
-   for (int i = 0; i < engine->GetMaxClients (); i++)
-   {
-      if (m_bots[i] != null && team == GetTeam (m_bots[i]->GetEntity ()))
-      {
-         m_bots[i]->Kick ();
+	for (int i = 0; i < engine->GetMaxClients(); i++)
+	{
+		if (m_bots[i] != null && team == GetTeam(m_bots[i]->GetEntity()))
+		{
+			m_bots[i]->Kick();
 
-         if (!removeAll)
-            break;
-      }
-   }
+			if (!removeAll)
+				break;
+		}
+	}
 }
 
-void BotControl::RemoveMenu(edict_t *ent, int selection)
+void BotControl::RemoveMenu(edict_t* ent, int selection)
 {
 	if ((selection > 4) || (selection < 1))
 		return;
@@ -689,10 +691,10 @@ void BotControl::RemoveMenu(edict_t *ent, int selection)
 		if ((m_bots[i] != null) && !FNullEnt(m_bots[i]->GetEntity()))
 		{
 			validSlots |= 1 << (i - ((selection - 1) * 8));
-			sprintf(buffer, "%s %1.1d. %s%s\n", buffer, i - ((selection - 1) * 8) + 1, GetEntityName(m_bots[i]->GetEntity ()), GetTeam(m_bots[i]->GetEntity()) == TEAM_COUNTER ? " \\y(CT)\\w" : " \\r(T)\\w");
+			sprintf(buffer, "%s %1.1d. %s%s\n", buffer, i - ((selection - 1) * 8) + 1, GetEntityName(m_bots[i]->GetEntity()), GetTeam(m_bots[i]->GetEntity()) == TEAM_COUNTER ? " \\y(CT)\\w" : " \\r(T)\\w");
 		}
 		else if (!FNullEnt(g_clients[i].ent))
-			sprintf(buffer, "%s %1.1d.\\d %s (Not SyPB) \\w\n", buffer, i - ((selection - 1) * 8) + 1, GetEntityName (g_clients[i].ent));
+			sprintf(buffer, "%s %1.1d.\\d %s (Not SyPB) \\w\n", buffer, i - ((selection - 1) * 8) + 1, GetEntityName(g_clients[i].ent));
 		else
 			sprintf(buffer, "%s %1.1d.\\d Null \\w\n", buffer, i - ((selection - 1) * 8) + 1);
 	}
@@ -731,238 +733,238 @@ void BotControl::RemoveMenu(edict_t *ent, int selection)
 	}
 }
 
-void BotControl::KillAll (int team)
+void BotControl::KillAll(int team)
 {
-   // this function kills all bots on server (only this dll controlled bots)
+	// this function kills all bots on server (only this dll controlled bots)
 
-   for (int i = 0; i < engine->GetMaxClients (); i++)
-   {
-      if (m_bots[i] != null)
-      {
-         if (team != -1 && team != GetTeam (m_bots[i]->GetEntity ()))
-            continue;
+	for (int i = 0; i < engine->GetMaxClients(); i++)
+	{
+		if (m_bots[i] != null)
+		{
+			if (team != -1 && team != GetTeam(m_bots[i]->GetEntity()))
+				continue;
 
-         m_bots[i]->Kill ();
-      }
-   }
-   CenterPrint ("All bots are killed.");
+			m_bots[i]->Kill();
+		}
+	}
+	CenterPrint("All bots are killed.");
 }
 
-void BotControl::RemoveRandom (void)
+void BotControl::RemoveRandom(void)
 {
-   // this function removes random bot from server (only sypb's)
+	// this function removes random bot from server (only sypb's)
 
-   for (int i = 0; i < engine->GetMaxClients (); i++)
-   {
-      if (m_bots[i] != null)  // is this slot used?
-      {
-         m_bots[i]->Kick ();
-         break;
-      }
-   }
+	for (int i = 0; i < engine->GetMaxClients(); i++)
+	{
+		if (m_bots[i] != null)  // is this slot used?
+		{
+			m_bots[i]->Kick();
+			break;
+		}
+	}
 }
 
-void BotControl::SetWeaponMode (int selection)
+void BotControl::SetWeaponMode(int selection)
 {
-   // this function sets bots weapon mode
+	// this function sets bots weapon mode
 
-   int tabMapStandart[7][Const_NumWeapons] =
-   {
-      {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Knife only
-      {-1,-1,-1, 2, 2, 0, 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Pistols only
-      {-1,-1,-1,-1,-1,-1,-1, 2, 2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Shotgun only
-      {-1,-1,-1,-1,-1,-1,-1,-1,-1, 2, 1, 2, 0, 2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 2,-1}, // Machine Guns only
-      {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 0, 0, 1, 0, 1, 1,-1,-1,-1,-1,-1,-1}, // Rifles only
-      {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 2, 2, 0, 1,-1,-1}, // Snipers only
-      {-1,-1,-1, 2, 2, 0, 1, 2, 2, 2, 1, 2, 0, 2, 0, 0, 1, 0, 1, 1, 2, 2, 0, 1, 2, 1}  // Standard
-   };
+	int tabMapStandart[7][Const_NumWeapons] =
+	{
+	   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Knife only
+	   {-1,-1,-1, 2, 2, 0, 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Pistols only
+	   {-1,-1,-1,-1,-1,-1,-1, 2, 2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Shotgun only
+	   {-1,-1,-1,-1,-1,-1,-1,-1,-1, 2, 1, 2, 0, 2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 2,-1}, // Machine Guns only
+	   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 0, 0, 1, 0, 1, 1,-1,-1,-1,-1,-1,-1}, // Rifles only
+	   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 2, 2, 0, 1,-1,-1}, // Snipers only
+	   {-1,-1,-1, 2, 2, 0, 1, 2, 2, 2, 1, 2, 0, 2, 0, 0, 1, 0, 1, 1, 2, 2, 0, 1, 2, 1}  // Standard
+	};
 
-   int tabMapAS[7][Const_NumWeapons] =
-   {
-      {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Knife only
-      {-1,-1,-1, 2, 2, 0, 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Pistols only
-      {-1,-1,-1,-1,-1,-1,-1, 1, 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Shotgun only
-      {-1,-1,-1,-1,-1,-1,-1,-1,-1, 1, 1, 1, 0, 2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 1,-1}, // Machine Guns only
-      {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 0,-1, 1, 0, 1, 1,-1,-1,-1,-1,-1,-1}, // Rifles only
-      {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 0, 0,-1, 1,-1,-1}, // Snipers only
-      {-1,-1,-1, 2, 2, 0, 1, 1, 1, 1, 1, 1, 0, 2, 0,-1, 1, 0, 1, 1, 0, 0,-1, 1, 1, 1}  // Standard
-   };
+	int tabMapAS[7][Const_NumWeapons] =
+	{
+	   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Knife only
+	   {-1,-1,-1, 2, 2, 0, 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Pistols only
+	   {-1,-1,-1,-1,-1,-1,-1, 1, 1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // Shotgun only
+	   {-1,-1,-1,-1,-1,-1,-1,-1,-1, 1, 1, 1, 0, 2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 1,-1}, // Machine Guns only
+	   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 0,-1, 1, 0, 1, 1,-1,-1,-1,-1,-1,-1}, // Rifles only
+	   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 0, 0,-1, 1,-1,-1}, // Snipers only
+	   {-1,-1,-1, 2, 2, 0, 1, 1, 1, 1, 1, 1, 0, 2, 0,-1, 1, 0, 1, 1, 0, 0,-1, 1, 1, 1}  // Standard
+	};
 
-   char modeName[7][12] =
-   {
-      {"Knife"},
-      {"Pistol"},
-      {"Shotgun"},
-      {"Machine Gun"},
-      {"Rifle"},
-      {"Sniper"},
-      {"Standard"}
-   };
-   selection--;
+	char modeName[7][12] =
+	{
+	   {"Knife"},
+	   {"Pistol"},
+	   {"Shotgun"},
+	   {"Machine Gun"},
+	   {"Rifle"},
+	   {"Sniper"},
+	   {"Standard"}
+	};
+	selection--;
 
-   for (int i = 0; i < Const_NumWeapons; i++)
-   {
-      g_weaponSelect[i].teamStandard = tabMapStandart[selection][i];
-      g_weaponSelect[i].teamAS = tabMapAS[selection][i];
-   }
+	for (int i = 0; i < Const_NumWeapons; i++)
+	{
+		g_weaponSelect[i].teamStandard = tabMapStandart[selection][i];
+		g_weaponSelect[i].teamAS = tabMapAS[selection][i];
+	}
 
-   if (selection == 0)
-      sypb_knifemode.SetInt (1);
-   else
-      sypb_knifemode.SetInt (0);
+	if (selection == 0)
+		sypb_knifemode.SetInt(1);
+	else
+		sypb_knifemode.SetInt(0);
 
-   CenterPrint ("%s weapon mode selected", &modeName[selection][0]);
+	CenterPrint("%s weapon mode selected", &modeName[selection][0]);
 }
 
-void BotControl::ListBots (void)
+void BotControl::ListBots(void)
 {
-   // this function list's bots currently playing on the server
+	// this function list's bots currently playing on the server
 
-   ServerPrintNoTag ("%-3.5s %-9.13s %-17.18s %-3.4s %-3.4s %-3.4s", "index", "name", "personality", "team", "skill", "frags");
+	ServerPrintNoTag("%-3.5s %-9.13s %-17.18s %-3.4s %-3.4s %-3.4s", "index", "name", "personality", "team", "skill", "frags");
 
-   for (int i = 0; i < engine->GetMaxClients (); i++)
-   {
-      edict_t *player = INDEXENT (i);
+	for (int i = 0; i < engine->GetMaxClients(); i++)
+	{
+		edict_t* player = INDEXENT(i);
 
-      // is this player slot valid
-      if (IsValidBot (player) != null && GetBot (player) != null)
-         ServerPrintNoTag ("[%-3.1d] %-9.13s %-17.18s %-3.4s %-3.1d %-3.1d", i, GetEntityName (player), GetBot (player)->m_personality == PERSONALITY_RUSHER ? "rusher" : GetBot (player)->m_personality == PERSONALITY_NORMAL ? "normal" : "careful", GetTeam (player) != 0 ? "CT" : "T", GetBot (player)->m_skill, static_cast <int> (player->v.frags));
-   }
+		// is this player slot valid
+		if (IsValidBot(player) != null && GetBot(player) != null)
+			ServerPrintNoTag("[%-3.1d] %-9.13s %-17.18s %-3.4s %-3.1d %-3.1d", i, GetEntityName(player), GetBot(player)->m_personality == PERSONALITY_RUSHER ? "rusher" : GetBot(player)->m_personality == PERSONALITY_NORMAL ? "normal" : "careful", GetTeam(player) != 0 ? "CT" : "T", GetBot(player)->m_skill, static_cast <int> (player->v.frags));
+	}
 }
 
-int BotControl::GetBotsNum (void)
+int BotControl::GetBotsNum(void)
 {
-   // this function returns number of sypb's playing on the server
+	// this function returns number of sypb's playing on the server
 
-   int count = 0;
+	int count = 0;
 
-   for (int i = 0; i < engine->GetMaxClients (); i++)
-   {
-      if (m_bots[i] != null)
-         count++;
-   }
-   return count;
+	for (int i = 0; i < engine->GetMaxClients(); i++)
+	{
+		if (m_bots[i] != null)
+			count++;
+	}
+	return count;
 }
 
-int BotControl::GetHumansNum (int mod)
+int BotControl::GetHumansNum(int mod)
 {
-   // this function returns number of humans playing on the server
+	// this function returns number of humans playing on the server
 
-   int count = 0;
+	int count = 0;
 
-   for (int i = 0; i < engine->GetMaxClients (); i++)
-   {
-	   if ((g_clients[i].flags & CFLAG_USED) && m_bots[i] == null)
-	   {
-		   if (mod == 0)
-			   count++;
-		   else
-		   {
-			   int team = *((int*)INDEXENT (i+1)->pvPrivateData+OFFSET_TEAM);
-			   if (team == (TEAM_COUNTER+1) || team == (TEAM_TERRORIST+1))
-				   count++;
-		   }
-	   }
-   }
-   return count;
+	for (int i = 0; i < engine->GetMaxClients(); i++)
+	{
+		if ((g_clients[i].flags & CFLAG_USED) && m_bots[i] == null)
+		{
+			if (mod == 0)
+				count++;
+			else
+			{
+				int team = *((int*)INDEXENT(i + 1)->pvPrivateData + OFFSET_TEAM);
+				if (team == (TEAM_COUNTER + 1) || team == (TEAM_TERRORIST + 1))
+					count++;
+			}
+		}
+	}
+	return count;
 }
 
 
-Bot *BotControl::GetHighestFragsBot (int team)
+Bot* BotControl::GetHighestFragsBot(int team)
 {
-   Bot *highFragBot = null;
+	Bot* highFragBot = null;
 
-   int bestIndex = 0;
-   float bestScore = -1;
+	int bestIndex = 0;
+	float bestScore = -1;
 
-   // search bots in this team
-   for (int i = 0; i < engine->GetMaxClients (); i++)
-   {
-      highFragBot = g_botManager->GetBot (i);
+	// search bots in this team
+	for (int i = 0; i < engine->GetMaxClients(); i++)
+	{
+		highFragBot = g_botManager->GetBot(i);
 
-      if (highFragBot != null && IsAlive (highFragBot->GetEntity ()) && GetTeam (highFragBot->GetEntity ()) == team)
-      {
-         if (highFragBot->pev->frags > bestScore)
-         {
-            bestIndex = i;
-            bestScore = highFragBot->pev->frags;
-         }
-      }
-   }
-   return GetBot (bestIndex);
+		if (highFragBot != null && IsAlive(highFragBot->GetEntity()) && GetTeam(highFragBot->GetEntity()) == team)
+		{
+			if (highFragBot->pev->frags > bestScore)
+			{
+				bestIndex = i;
+				bestScore = highFragBot->pev->frags;
+			}
+		}
+	}
+	return GetBot(bestIndex);
 }
 
-void BotControl::CheckTeamEconomics (int team)
+void BotControl::CheckTeamEconomics(int team)
 {
-   // this function decides is players on specified team is able to buy primary weapons by calculating players
-   // that have not enough money to buy primary (with economics), and if this result higher 80%, player is can't
-   // buy primary weapons.
+	// this function decides is players on specified team is able to buy primary weapons by calculating players
+	// that have not enough money to buy primary (with economics), and if this result higher 80%, player is can't
+	// buy primary weapons.
 
-	// SyPB Pro P.43 - Game Mode Support improve
+	 // SyPB Pro P.43 - Game Mode Support improve
 	if (GetGameMod() != MODE_BASE)
 	{
 		m_economicsGood[team] = true;
 		return;
 	}
 
-   int numPoorPlayers = 0;
-   int numTeamPlayers = 0;
+	int numPoorPlayers = 0;
+	int numTeamPlayers = 0;
 
-   // start calculating
-   for (int i = 0; i < engine->GetMaxClients (); i++)
-   {
-      if (m_bots[i] != null && GetTeam (m_bots[i]->GetEntity ()) == team)
-      {
-         if (m_bots[i]->m_moneyAmount <= 1500)
-            numPoorPlayers++;
+	// start calculating
+	for (int i = 0; i < engine->GetMaxClients(); i++)
+	{
+		if (m_bots[i] != null && GetTeam(m_bots[i]->GetEntity()) == team)
+		{
+			if (m_bots[i]->m_moneyAmount <= 1500)
+				numPoorPlayers++;
 
-         numTeamPlayers++; // update count of team
-      }
-   }
+			numTeamPlayers++; // update count of team
+		}
+	}
 
-   m_economicsGood[team] = true;
+	m_economicsGood[team] = true;
 
-   if (numTeamPlayers <= 1)
-      return;
+	if (numTeamPlayers <= 1)
+		return;
 
-   // if 80 percent of team have no enough money to purchase primary weapon
-   if ((numTeamPlayers * 80) / 100 <= numPoorPlayers)
-      m_economicsGood[team] = false;
+	// if 80 percent of team have no enough money to purchase primary weapon
+	if ((numTeamPlayers * 80) / 100 <= numPoorPlayers)
+		m_economicsGood[team] = false;
 
-   // winner must buy something!
-   if (m_lastWinner == team)
-      m_economicsGood[team] = true;
+	// winner must buy something!
+	if (m_lastWinner == team)
+		m_economicsGood[team] = true;
 }
 
-void BotControl::Free (void)
+void BotControl::Free(void)
 {
-   // this function free all bots slots (used on server shutdown)
+	// this function free all bots slots (used on server shutdown)
 
-   for (int i = 0; i < 32; i++)
-   {
-      if (m_bots[i] != null)
-      {
-         delete m_bots[i];
-         m_bots[i] = null;
-      }
-   }
+	for (int i = 0; i < 32; i++)
+	{
+		if (m_bots[i] != null)
+		{
+			delete m_bots[i];
+			m_bots[i] = null;
+		}
+	}
 }
 
-void BotControl::Free (int index)
+void BotControl::Free(int index)
 {
-   // this function frees one bot selected by index (used on bot disconnect)
+	// this function frees one bot selected by index (used on bot disconnect)
 
-   delete m_bots[index];
-   m_bots[index] = null;
+	delete m_bots[index];
+	m_bots[index] = null;
 }
 
 // SyPB Pro P.43 - Base improve
-Bot::Bot(edict_t *bot, int skill, int personality, int team, int member)
+Bot::Bot(edict_t* bot, int skill, int personality, int team, int member)
 {
 	char rejectReason[128];
 	int clientIndex = ENTINDEX(bot);
 
-	memset(reinterpret_cast <void *> (this), 0, sizeof(*this));
+	memset(reinterpret_cast <void*> (this), 0, sizeof(*this));
 
 	pev = &bot->v;
 
@@ -976,14 +978,16 @@ Bot::Bot(edict_t *bot, int skill, int personality, int team, int member)
 	BotControl::CallGameEntity(&bot->v);
 
 	// set all info buffer keys for this bot
-	char *buffer = GET_INFOKEYBUFFER(bot);
+	char* buffer = GET_INFOKEYBUFFER(bot);
 
 	// SyPB Pro P.45 - Bot Base Data for CS
 	SET_CLIENT_KEYVALUE(clientIndex, buffer, "_vgui_menus", "0");
 	//SET_CLIENT_KEYVALUE(clientIndex, buffer, "model", "");
 
-	if (sypb_tagbots.GetBool() == true)
+	if (sypbm_nametag.GetInt() != 0)
 		SET_CLIENT_KEYVALUE(clientIndex, buffer, "*bot", "1");
+	else
+		SET_CLIENT_KEYVALUE(clientIndex, buffer, "*bot", "0");
 
 	rejectReason[0] = 0; // reset the reject reason template string
 	MDLL_ClientConnect(bot, "Bot", "127.0.0.1", rejectReason);
@@ -1066,288 +1070,288 @@ Bot::Bot(edict_t *bot, int skill, int personality, int team, int member)
 	NewRound();
 }
 
-Bot::~Bot (void)
+Bot::~Bot(void)
 {
-   // this is bot destructor
+	// this is bot destructor
 
-   // SwitchChatterIcon (false); // crash on CTRL+C'ing win32 console hlds
-   DeleteSearchNodes ();
-   ResetTasks ();
+	// SwitchChatterIcon (false); // crash on CTRL+C'ing win32 console hlds
+	DeleteSearchNodes();
+	ResetTasks();
 
-   // SyPB Pro P.43 - Bot Name Fixed
-   char botName[64];
-   ITERATE_ARRAY(g_botNames, j)
-   {
-	   sprintf(botName, "[SyPBM] %s", (char *)g_botNames[j].name);
+	// SyPB Pro P.43 - Bot Name Fixed
+	char botName[64];
+	ITERATE_ARRAY(g_botNames, j)
+	{
+		sprintf(botName, "[SyPBM] %s", (char*)g_botNames[j].name);
 
-	   if (strcmp(g_botNames[j].name, GetEntityName(GetEntity())) == 0 || 
-		   strcmp(botName, GetEntityName(GetEntity())) == 0)
-	   {
-		   g_botNames[j].isUsed = false;
-		   break;
-	   }
-   }
+		if (strcmp(g_botNames[j].name, GetEntityName(GetEntity())) == 0 ||
+			strcmp(botName, GetEntityName(GetEntity())) == 0)
+		{
+			g_botNames[j].isUsed = false;
+			break;
+		}
+	}
 }
 
-void Bot::NewRound (void)
+void Bot::NewRound(void)
 {
-   // this function initializes a bot after creation & at the start of each round
+	// this function initializes a bot after creation & at the start of each round
 
-   int i = 0;
+	int i = 0;
 
-   // delete all allocated path nodes
-   DeleteSearchNodes ();
+	// delete all allocated path nodes
+	DeleteSearchNodes();
 
-   m_waypointOrigin = nullvec;
-   m_destOrigin = nullvec;
-   //m_currentWaypointIndex = -1;
-   m_currentTravelFlags = 0;
-   m_desiredVelocity = nullvec;
-   m_prevGoalIndex = -1;
-   m_chosenGoalIndex = -1;
-   m_loosedBombWptIndex = -1;
+	m_waypointOrigin = nullvec;
+	m_destOrigin = nullvec;
+	//m_currentWaypointIndex = -1;
+	m_currentTravelFlags = 0;
+	m_desiredVelocity = nullvec;
+	m_prevGoalIndex = -1;
+	m_chosenGoalIndex = -1;
+	m_loosedBombWptIndex = -1;
 
-   m_moveToC4 = false;
-   m_duckDefuse = false;
-   m_duckDefuseCheckTime = 0.0f;
+	m_moveToC4 = false;
+	m_duckDefuse = false;
+	m_duckDefuseCheckTime = 0.0f;
 
-   m_prevWptIndex[0] = -1;
-   m_prevWptIndex[1] = -1;
+	m_prevWptIndex[0] = -1;
+	m_prevWptIndex[1] = -1;
 
-   m_navTimeset = engine->GetTime ();
+	m_navTimeset = engine->GetTime();
 
-   switch (m_personality)
-   {
-   case PERSONALITY_NORMAL:
-      m_pathType = engine->RandomInt (1, 100) > 45 ? 0 : 1;
-      break;
+	switch (m_personality)
+	{
+	case PERSONALITY_NORMAL:
+		m_pathType = engine->RandomInt(1, 100) > 45 ? 0 : 1;
+		break;
 
-   case PERSONALITY_RUSHER:
-      m_pathType = 0;
-      break;
+	case PERSONALITY_RUSHER:
+		m_pathType = 0;
+		break;
 
-   case PERSONALITY_CAREFUL:
-      m_pathType = 1;
-      break;
-   }
+	case PERSONALITY_CAREFUL:
+		m_pathType = 1;
+		break;
+	}
 
-   // clear all states & tasks
-   m_states = 0;
-   ResetTasks ();
+	// clear all states & tasks
+	m_states = 0;
+	ResetTasks();
 
-   m_isVIP = false;
-   m_isLeader = false;
-   m_hasProgressBar = false;
-   m_canChooseAimDirection = true;
+	m_isVIP = false;
+	m_isLeader = false;
+	m_hasProgressBar = false;
+	m_canChooseAimDirection = true;
 
-   m_timeTeamOrder = 0.0f;
-   m_askCheckTime = 0.0f;
-   m_minSpeed = 260.0f;
-   m_prevSpeed = 0.0f;
-   m_prevOrigin = Vector (9999.0, 9999.0, 9999.0f);
-   m_prevTime = engine->GetTime ();
-   m_blindRecognizeTime = engine->GetTime ();
+	m_timeTeamOrder = 0.0f;
+	m_askCheckTime = 0.0f;
+	m_minSpeed = 260.0f;
+	m_prevSpeed = 0.0f;
+	m_prevOrigin = Vector(9999.0, 9999.0, 9999.0f);
+	m_prevTime = engine->GetTime();
+	m_blindRecognizeTime = engine->GetTime();
 
-   m_viewDistance = 4096.0f;
-   m_maxViewDistance = 4096.0f;
+	m_viewDistance = 4096.0f;
+	m_maxViewDistance = 4096.0f;
 
-   m_pickupItem = null;
-   m_itemIgnore = null;
-   m_itemCheckTime = 0.0f;
+	m_pickupItem = null;
+	m_itemIgnore = null;
+	m_itemCheckTime = 0.0f;
 
-   m_breakableEntity = null;
-   m_breakable = nullvec;
-   m_timeDoorOpen = 0.0f;
+	m_breakableEntity = null;
+	m_breakable = nullvec;
+	m_timeDoorOpen = 0.0f;
 
-   ResetCollideState ();
-   ResetDoubleJumpState ();
+	ResetCollideState();
+	ResetDoubleJumpState();
 
-   m_checkFallPoint[0] = nullvec;
-   m_checkFallPoint[1] = nullvec;
-   m_checkFall = false;
+	m_checkFallPoint[0] = nullvec;
+	m_checkFallPoint[1] = nullvec;
+	m_checkFall = false;
 
-   SetEnemy(null);
-   m_lastVictim = null;
-   SetLastEnemy(null);
-   SetMoveTarget(null);
-   m_trackingEdict = null;
-   m_timeNextTracking = 0.0f;
+	SetEnemy(null);
+	m_lastVictim = null;
+	SetLastEnemy(null);
+	SetMoveTarget(null);
+	m_trackingEdict = null;
+	m_timeNextTracking = 0.0f;
 
-   m_buttonPushTime = 0.0f;
-   m_enemyUpdateTime = 0.0f;
-   m_seeEnemyTime = 0.0f;
-   m_shootAtDeadTime = 0.0f;
-   m_oldCombatDesire = 0.0f;
+	m_buttonPushTime = 0.0f;
+	m_enemyUpdateTime = 0.0f;
+	m_seeEnemyTime = 0.0f;
+	m_shootAtDeadTime = 0.0f;
+	m_oldCombatDesire = 0.0f;
 
-   m_backCheckEnemyTime = 0.0f;
+	m_backCheckEnemyTime = 0.0f;
 
-   m_avoidEntity = null;
-   m_needAvoidEntity = 0;
+	m_avoidEntity = null;
+	m_needAvoidEntity = 0;
 
-   m_lastDamageType = -1;
-   m_voteMap = 0;
-   m_doorOpenAttempt = 0;
-   m_aimFlags = 0;
+	m_lastDamageType = -1;
+	m_voteMap = 0;
+	m_doorOpenAttempt = 0;
+	m_aimFlags = 0;
 
-   m_position = nullvec;
+	m_position = nullvec;
 
-   m_idealReactionTime = g_skillTab[m_skill / 20].minSurpriseTime;
-   m_actualReactionTime = g_skillTab[m_skill / 20].minSurpriseTime;
+	m_idealReactionTime = g_skillTab[m_skill / 20].minSurpriseTime;
+	m_actualReactionTime = g_skillTab[m_skill / 20].minSurpriseTime;
 
-   m_targetEntity = null;
-   m_followWaitTime = 0.0f;
-   
-   for (i = 0; i < Const_MaxHostages; i++)
-      m_hostages[i] = null;
+	m_targetEntity = null;
+	m_followWaitTime = 0.0f;
 
-   m_isReloading = false;
-   m_reloadState = RSTATE_NONE;
+	for (i = 0; i < Const_MaxHostages; i++)
+		m_hostages[i] = null;
 
-   m_reloadCheckTime = 0.0f;
-   m_shootTime = engine->GetTime ();
-   m_playerTargetTime = engine->GetTime ();
-   m_firePause = 0.0f;
-   m_timeLastFired = 0.0f;
+	m_isReloading = false;
+	m_reloadState = RSTATE_NONE;
 
-   m_grenadeCheckTime = 0.0f;
-   m_isUsingGrenade = false;
+	m_reloadCheckTime = 0.0f;
+	m_shootTime = engine->GetTime();
+	m_playerTargetTime = engine->GetTime();
+	m_firePause = 0.0f;
+	m_timeLastFired = 0.0f;
 
-   m_blindButton = 0;
-   m_blindTime = 0.0f;
-   m_jumpTime = 0.0f;
-   m_jumpFinished = false;
-   m_isStuck = false;
+	m_grenadeCheckTime = 0.0f;
+	m_isUsingGrenade = false;
 
-   m_sayTextBuffer.timeNextChat = engine->GetTime ();
-   m_sayTextBuffer.entityIndex = -1;
-   m_sayTextBuffer.sayText[0] = 0x0;
+	m_blindButton = 0;
+	m_blindTime = 0.0f;
+	m_jumpTime = 0.0f;
+	m_jumpFinished = false;
+	m_isStuck = false;
 
-   m_buyState = 0;
+	m_sayTextBuffer.timeNextChat = engine->GetTime();
+	m_sayTextBuffer.entityIndex = -1;
+	m_sayTextBuffer.sayText[0] = 0x0;
 
-   // SyPB Pro P.47 - Base improve
-   m_damageTime = 0.0f;
-   m_zhCampPointIndex = -1;
-   m_checkCampPointTime = 0.0f;
+	m_buyState = 0;
 
-   if (!m_notKilled) // if bot died, clear all weapon stuff and force buying again
-   {
-      memset (&m_ammoInClip, 0, sizeof (m_ammoInClip));
-      memset (&m_ammo, 0, sizeof (m_ammo));
+	// SyPB Pro P.47 - Base improve
+	m_damageTime = 0.0f;
+	m_zhCampPointIndex = -1;
+	m_checkCampPointTime = 0.0f;
 
-      m_currentWeapon = 0;
-   }
+	if (!m_notKilled) // if bot died, clear all weapon stuff and force buying again
+	{
+		memset(&m_ammoInClip, 0, sizeof(m_ammoInClip));
+		memset(&m_ammo, 0, sizeof(m_ammo));
 
-   m_knifeAttackTime = engine->GetTime () + engine->RandomFloat (1.3f, 2.6f);
-   m_nextBuyTime = engine->GetTime () + engine->RandomFloat (0.6f, 1.2f);
-   
-   m_GetNewEnemyTimer = engine->GetTime ();
+		m_currentWeapon = 0;
+	}
 
-   m_buyPending = false;
-   m_inBombZone = false;
+	m_knifeAttackTime = engine->GetTime() + engine->RandomFloat(1.3f, 2.6f);
+	m_nextBuyTime = engine->GetTime() + engine->RandomFloat(0.6f, 1.2f);
 
-   m_shieldCheckTime = 0.0f;
-   m_zoomCheckTime = 0.0f;
-   m_strafeSetTime = 0.0f;
-   m_combatStrafeDir = 0;
-   m_fightStyle = 0;
-   m_lastFightStyleCheck = 0.0f;
+	m_GetNewEnemyTimer = engine->GetTime();
 
-   m_checkWeaponSwitch = true;
-   m_checkKnifeSwitch = true;
-   m_buyingFinished = false;
+	m_buyPending = false;
+	m_inBombZone = false;
 
-   m_radioEntity = null;
-   m_radioOrder = 0;
-   m_defendedBomb = false;
+	m_shieldCheckTime = 0.0f;
+	m_zoomCheckTime = 0.0f;
+	m_strafeSetTime = 0.0f;
+	m_combatStrafeDir = 0;
+	m_fightStyle = 0;
+	m_lastFightStyleCheck = 0.0f;
 
-   m_timeLogoSpray = engine->GetTime () + engine->RandomFloat (0.5f, 2.0f);
-   m_spawnTime = engine->GetTime ();
-   m_lastChatTime = engine->GetTime ();
-   pev->v_angle.y = pev->ideal_yaw;
+	m_checkWeaponSwitch = true;
+	m_checkKnifeSwitch = true;
+	m_buyingFinished = false;
 
-   m_timeCamping = 0;
-   m_campDirection = 0;
-   m_nextCampDirTime = 0;
-   m_campButtons = 0;
+	m_radioEntity = null;
+	m_radioOrder = 0;
+	m_defendedBomb = false;
 
-   m_soundUpdateTime = 0.0f;
-   m_heardSoundTime = engine->GetTime ();
+	m_timeLogoSpray = engine->GetTime() + engine->RandomFloat(0.5f, 2.0f);
+	m_spawnTime = engine->GetTime();
+	m_lastChatTime = engine->GetTime();
+	pev->v_angle.y = pev->ideal_yaw;
 
-   // clear its message queue
-   for (i = 0; i < 32; i++)
-      m_messageQueue[i] = CMENU_IDLE;
+	m_timeCamping = 0;
+	m_campDirection = 0;
+	m_nextCampDirTime = 0;
+	m_campButtons = 0;
 
-   m_actMessageIndex = 0;
-   m_pushMessageIndex = 0;
+	m_soundUpdateTime = 0.0f;
+	m_heardSoundTime = engine->GetTime();
 
-   // SyPB Pro P.43 - Waypoint improve
-   m_prevGoalIndex = -1;
-   GetCurrentTask()->data = -1;
+	// clear its message queue
+	for (i = 0; i < 32; i++)
+		m_messageQueue[i] = CMENU_IDLE;
 
-   SetEntityWaypoint(GetEntity(), -2);
-   m_currentWaypointIndex = -1;
-   GetValidWaypoint();
-   // --------------
+	m_actMessageIndex = 0;
+	m_pushMessageIndex = 0;
 
-   // SyPB Pro P.30 - AMXX API
-   m_weaponClipAPI = 0;
-   m_weaponReloadAPI = false;
-   m_lookAtAPI = nullvec;
-   m_moveAIAPI = false;
-   m_enemyAPI = null;
-   m_blockCheckEnemyTime = engine->GetTime();
+	// SyPB Pro P.43 - Waypoint improve
+	m_prevGoalIndex = -1;
+	GetCurrentTask()->data = -1;
 
-   // SyPB Pro P.31 - AMXX API
-   m_knifeDistance1API = 0;
-   m_knifeDistance2API = 0;
+	SetEntityWaypoint(GetEntity(), -2);
+	m_currentWaypointIndex = -1;
+	GetValidWaypoint();
+	// --------------
 
-   // SyPB Pro P.35 - AMXX API
-   m_gunMinDistanceAPI = 0;
-   m_gunMaxDistanceAPI = 0;
+	// SyPB Pro P.30 - AMXX API
+	m_weaponClipAPI = 0;
+	m_weaponReloadAPI = false;
+	m_lookAtAPI = nullvec;
+	m_moveAIAPI = false;
+	m_enemyAPI = null;
+	m_blockCheckEnemyTime = engine->GetTime();
 
-   // SyPB Pro P.42 - AMXX API
-   m_waypointGoalAPI = -1;
-   m_blockWeaponPickAPI = false;
+	// SyPB Pro P.31 - AMXX API
+	m_knifeDistance1API = 0;
+	m_knifeDistance2API = 0;
 
-   // and put buying into its message queue
-   PushMessageQueue (CMENU_BUY);
-   PushTask (TASK_NORMAL, TASKPRI_NORMAL, -1, 0.0, true);
+	// SyPB Pro P.35 - AMXX API
+	m_gunMinDistanceAPI = 0;
+	m_gunMaxDistanceAPI = 0;
+
+	// SyPB Pro P.42 - AMXX API
+	m_waypointGoalAPI = -1;
+	m_blockWeaponPickAPI = false;
+
+	// and put buying into its message queue
+	PushMessageQueue(CMENU_BUY);
+	PushTask(TASK_NORMAL, TASKPRI_NORMAL, -1, 0.0, true);
 }
 
-void Bot::Kill (void)
+void Bot::Kill(void)
 {
-   // this function kills a bot (not just using ClientKill, but like the CSBot does)
-   // base code courtesy of Lazy (from bots-united forums!)
+	// this function kills a bot (not just using ClientKill, but like the CSBot does)
+	// base code courtesy of Lazy (from bots-united forums!)
 
-   edict_t *hurtEntity = (*g_engfuncs.pfnCreateNamedEntity) (MAKE_STRING ("trigger_hurt"));
+	edict_t* hurtEntity = (*g_engfuncs.pfnCreateNamedEntity) (MAKE_STRING("trigger_hurt"));
 
-   if (FNullEnt (hurtEntity))
-      return;
+	if (FNullEnt(hurtEntity))
+		return;
 
-   hurtEntity->v.classname = MAKE_STRING (g_weaponDefs[m_currentWeapon].className);
-   hurtEntity->v.dmg_inflictor = GetEntity ();
-   hurtEntity->v.dmg = 9999.0f;
-   hurtEntity->v.dmg_take = 1.0f;
-   hurtEntity->v.dmgtime = 2.0f;
-   hurtEntity->v.effects |= EF_NODRAW;
+	hurtEntity->v.classname = MAKE_STRING(g_weaponDefs[m_currentWeapon].className);
+	hurtEntity->v.dmg_inflictor = GetEntity();
+	hurtEntity->v.dmg = 9999.0f;
+	hurtEntity->v.dmg_take = 1.0f;
+	hurtEntity->v.dmgtime = 2.0f;
+	hurtEntity->v.effects |= EF_NODRAW;
 
-   (*g_engfuncs.pfnSetOrigin) (hurtEntity, Vector (-4000, -4000, -4000));
+	(*g_engfuncs.pfnSetOrigin) (hurtEntity, Vector(-4000, -4000, -4000));
 
-   KeyValueData kv;
-   kv.szClassName = const_cast <char *> (g_weaponDefs[m_currentWeapon].className);
-   kv.szKeyName = "damagetype";
-   kv.szValue = FormatBuffer ("%d", (1 << 4));
-   kv.fHandled = false;
+	KeyValueData kv;
+	kv.szClassName = const_cast <char*> (g_weaponDefs[m_currentWeapon].className);
+	kv.szKeyName = "damagetype";
+	kv.szValue = FormatBuffer("%d", (1 << 4));
+	kv.fHandled = false;
 
-   MDLL_KeyValue (hurtEntity, &kv);
+	MDLL_KeyValue(hurtEntity, &kv);
 
-   MDLL_Spawn (hurtEntity);
-   MDLL_Touch (hurtEntity, GetEntity ());
+	MDLL_Spawn(hurtEntity);
+	MDLL_Touch(hurtEntity, GetEntity());
 
-   (*g_engfuncs.pfnRemoveEntity) (hurtEntity);
+	(*g_engfuncs.pfnRemoveEntity) (hurtEntity);
 }
 
-void Bot::Kick (void)
+void Bot::Kick(void)
 {
 	// SyPB Pro P.47 - Small Base improve
 	if (!(pev->flags & FL_FAKECLIENT) || IsNullString(GetEntityName(GetEntity())))
@@ -1362,44 +1366,44 @@ void Bot::Kick (void)
 		sypb_quota.SetInt(g_botManager->GetBotsNum() - 1);
 }
 
-void Bot::StartGame (void)
+void Bot::StartGame(void)
 {
-   // this function handles the selection of teams & class
+	// this function handles the selection of teams & class
 
-   // handle counter-strike stuff here...
-   if (m_startAction == CMENU_TEAM)
-   {
-      m_startAction = CMENU_IDLE;  // switch back to idle
+	// handle counter-strike stuff here...
+	if (m_startAction == CMENU_TEAM)
+	{
+		m_startAction = CMENU_IDLE;  // switch back to idle
 
-      if (sypb_forceteam.GetString ()[0] == 'C' || sypb_forceteam.GetString ()[0] == 'c' || 
-		  sypb_forceteam.GetString()[0] == '2')
-         m_wantedTeam = 2;
-      else if (sypb_forceteam.GetString ()[0] == 'T' || sypb_forceteam.GetString ()[0] == 't' || 
-		  sypb_forceteam.GetString()[0] == '1') // SyPB Pro P.28 - 1=T, 2=CT
-         m_wantedTeam = 1;
+		if (sypb_forceteam.GetString()[0] == 'C' || sypb_forceteam.GetString()[0] == 'c' ||
+			sypb_forceteam.GetString()[0] == '2')
+			m_wantedTeam = 2;
+		else if (sypb_forceteam.GetString()[0] == 'T' || sypb_forceteam.GetString()[0] == 't' ||
+			sypb_forceteam.GetString()[0] == '1') // SyPB Pro P.28 - 1=T, 2=CT
+			m_wantedTeam = 1;
 
-      if (m_wantedTeam != 1 && m_wantedTeam != 2)
-         m_wantedTeam = 5;
+		if (m_wantedTeam != 1 && m_wantedTeam != 2)
+			m_wantedTeam = 5;
 
-      // select the team the bot wishes to join...
-      FakeClientCommand (GetEntity (), "menuselect %d", m_wantedTeam);
-   }
-   else if (m_startAction == CMENU_CLASS)
-   {
-      m_startAction = CMENU_IDLE;  // switch back to idle
+		// select the team the bot wishes to join...
+		FakeClientCommand(GetEntity(), "menuselect %d", m_wantedTeam);
+	}
+	else if (m_startAction == CMENU_CLASS)
+	{
+		m_startAction = CMENU_IDLE;  // switch back to idle
 
-	  // SyPB Pro P.47 - Small change
-	  int maxChoice = (g_gameVersion == CSVER_CZERO) ? 5 : 4;
-	  m_wantedClass = engine->RandomInt(1, maxChoice);
+		// SyPB Pro P.47 - Small change
+		int maxChoice = (g_gameVersion == CSVER_CZERO) ? 5 : 4;
+		m_wantedClass = engine->RandomInt(1, maxChoice);
 
-      // select the class the bot wishes to use...
-      FakeClientCommand (GetEntity (), "menuselect %d", m_wantedClass);
+		// select the class the bot wishes to use...
+		FakeClientCommand(GetEntity(), "menuselect %d", m_wantedClass);
 
-      // bot has now joined the game (doesn't need to be started)
-      m_notStarted = false;
+		// bot has now joined the game (doesn't need to be started)
+		m_notStarted = false;
 
-      // check for greeting other players, since we connected
-      if (engine->RandomInt (0, 100) < 20)
-         ChatMessage (CHAT_HELLO);
-   }
+		// check for greeting other players, since we connected
+		if (engine->RandomInt(0, 100) < 20)
+			ChatMessage(CHAT_HELLO);
+	}
 }

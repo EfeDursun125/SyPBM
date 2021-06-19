@@ -46,7 +46,7 @@ bool g_waypointOn = false;
 bool g_waypointsChanged = true;
 bool g_autoWaypoint = false;
 bool g_bLearnJumpWaypoint = false;
-bool g_leaderChoosen[2] = {false, false};
+bool g_leaderChoosen[2] = { false, false };
 
 bool g_sgdWaypoint = false;
 bool g_sautoWaypoint = false;
@@ -58,7 +58,7 @@ float g_timeRoundEnd = 0.0f;
 float g_timeRoundMid = 0.0f;
 float g_timeNextBombUpdate = 0.0f;
 float g_timeBombPlanted = 0.0f;
-float g_lastRadioTime[2] = {0.0f, 0.0f};
+float g_lastRadioTime[2] = { 0.0f, 0.0f };
 float g_autoPathDistance = 250.0f;
 
 float g_DelayTimer = 0.0f;
@@ -89,14 +89,15 @@ float g_entityGetWpTime[entityNum];
 
 
 Array <Array <String> > g_chatFactory;
+Array <Array <ChatterItem> > g_chatterFactory;
 Array <NameItem> g_botNames;
 Array <KwChat> g_replyFactory;
 
-Library *g_gameLib = null;
+Library* g_gameLib = null;
 
-meta_globals_t *gpMetaGlobals = null;
-gamedll_funcs_t *gpGamedllFuncs = null;
-mutil_funcs_t *gpMetaUtilFuncs = null;
+meta_globals_t* gpMetaGlobals = null;
+gamedll_funcs_t* gpGamedllFuncs = null;
+mutil_funcs_t* gpMetaUtilFuncs = null;
 
 DLL_FUNCTIONS g_functionTable;
 EntityAPI_t g_entityAPI = null;
@@ -108,24 +109,24 @@ enginefuncs_t g_engfuncs;
 Client_old g_clients[32];
 WeaponProperty g_weaponDefs[Const_MaxWeapons + 1];
 
-edict_t *g_worldEdict = null;
-edict_t *g_hostEntity = null;
-globalvars_t *g_pGlobals = null;
+edict_t* g_worldEdict = null;
+edict_t* g_hostEntity = null;
+globalvars_t* g_pGlobals = null;
 
 // default tables for personality weapon preferences, overridden by weapons.cfg
 int g_normalWeaponPrefs[Const_NumWeapons] =
-   {0, 2, 1, 4, 5, 6, 3, 12, 10, 24, 25, 13, 11, 8, 7, 22, 23, 18, 21, 17, 19, 15, 17, 9, 14, 16};
+{ 0, 2, 1, 4, 5, 6, 3, 12, 10, 24, 25, 13, 11, 8, 7, 22, 23, 18, 21, 17, 19, 15, 17, 9, 14, 16 };
 
 int g_rusherWeaponPrefs[Const_NumWeapons] =
-   {0, 2, 1, 4, 5, 6, 3, 24, 19, 22, 23, 20, 21, 10, 12, 13, 7, 8, 11, 9, 18, 17, 19, 15, 16, 14};
+{ 0, 2, 1, 4, 5, 6, 3, 24, 19, 22, 23, 20, 21, 10, 12, 13, 7, 8, 11, 9, 18, 17, 19, 15, 16, 14 };
 
 int g_carefulWeaponPrefs[Const_NumWeapons] =
-   {0, 2, 1, 4, 5, 6, 3, 7, 8, 12, 10, 13, 11, 9, 24, 18, 14, 17, 16, 15, 19, 20, 21, 22, 23, 25};
+{ 0, 2, 1, 4, 5, 6, 3, 7, 8, 12, 10, 13, 11, 9, 24, 18, 14, 17, 16, 15, 19, 20, 21, 22, 23, 25 };
 
 int g_grenadeBuyPrecent[Const_NumWeapons - 23] =
-   {95, 85, 40};
+{ 95, 85, 40 };
 
-int g_grenadeBuyMoney[Const_NumWeapons - 23] = {300, 200, 300};
+int g_grenadeBuyMoney[Const_NumWeapons - 23] = { 300, 200, 300 };
 
 SkillDef g_skillTab[6] =
 {
@@ -137,14 +138,14 @@ SkillDef g_skillTab[6] =
    {0.0f, 0.1f, 20.0f, 30.0f, 9.0, 12.0, 0.0f,  5.0,  0.0f, 100, 100, 100, 20}
 };
 
-int *g_weaponPrefs[] =
+int* g_weaponPrefs[] =
 {
    g_normalWeaponPrefs,
    g_rusherWeaponPrefs,
    g_carefulWeaponPrefs
 };
 
-extern "C" int GetEntityAPI2 (DLL_FUNCTIONS *functionTable, int *interfaceVersion);
+extern "C" int GetEntityAPI2(DLL_FUNCTIONS * functionTable, int* interfaceVersion);
 
 // metamod engine & dllapi function tables
 metamod_funcs_t gMetaFunctionTable =
@@ -190,6 +191,7 @@ Task g_taskFilters[] =
    {null, null, TASK_THROWHEGRENADE, 0, -1, 0.0f, false},
    {null, null, TASK_THROWFBGRENADE, 0, -1, 0.0f, false},
    {null, null, TASK_THROWSMGRENADE, 0, -1, 0.0f, false},
+   {null, null, TASK_THROWFLARE, 0, -1, 0.0f, false},
    {null, null, TASK_DOUBLEJUMP, 0, -1, 0.0f, false},
    {null, null, TASK_ESCAPEFROMBOMB, 0, -1, 0.0f, false},
    {null, null, TASK_DESTROYBREAKABLE, 0, -1, 0.0f, false},
@@ -199,40 +201,38 @@ Task g_taskFilters[] =
    {null, null, TASK_MOVETOTARGET, 0, -1, 0.0f, true}
 };
 
-// SyPB Pro P.35 - Weapon Data Change
-// weapons and their specifications
 WeaponSelect g_weaponSelect[Const_NumWeapons + 1] =
 {
    {WEAPON_KNIFE,		"weapon_knife",     "knife.mdl",     0,    0, -1, -1,  0,  0,  0,  0,  false, true },
    {WEAPON_USP,			"weapon_usp",       "usp.mdl",       500,  1, -1, -1,  1,  1,  2,  2,  false, false},
    {WEAPON_GLOCK18,		"weapon_glock18",   "glock18.mdl",   400,  1, -1, -1,  1,  2,  1,  1,  false, false},
-//   {WEAPON_DEAGLE,		"weapon_deagle",    "deagle.mdl",    650,  1,  2,  2,  1,  3,  4,  4,  true,  false},
-   {WEAPON_DEAGLE,		"weapon_deagle",	"deagle.mdl",	 650,  1,  0,  0,  1,  3,  4,  4,  true,  false},
-   {WEAPON_P228,		"weapon_p228",      "p228.mdl",      600,  1,  2,  2,  1,  4,  3,  3,  false, false},
-  //{WEAPON_ELITE,		"weapon_elite",		"elite.mdl",	 1000, 1,  0,  0,  1,  5,  5,  5, false, false },
-   {WEAPON_ELITE,		"weapon_elite",     "elite.mdl",     1000, 1,  2,  2,  1,  5,  5,  5,  false, false},
-   {WEAPON_FN57,		"weapon_fiveseven", "fiveseven.mdl", 750,  1,  1,  1,  1,  6,  5,  5,  false, false},
-   {WEAPON_M3,			"weapon_m3",        "m3.mdl",        1700, 1,  2, -1,  2,  1,  1,  1,  false, false},
-   {WEAPON_XM1014,		"weapon_xm1014",    "xm1014.mdl",    3000, 1,  2, -1,  2,  2,  2,  2,  false, false},
-   {WEAPON_MP5,			"weapon_mp5navy",   "mp5.mdl",       1500, 1,  2,  1,  3,  1,  2,  2,  false, true },
-   {WEAPON_TMP,			"weapon_tmp",       "tmp.mdl",       1250, 1,  1,  1,  3,  2,  1,  1,  false, true },
-   {WEAPON_P90,			"weapon_p90",       "p90.mdl",       2350, 1,  2,  1,  3,  3,  4,  4,  false, true },
-   {WEAPON_MAC10,		"weapon_mac10",     "mac10.mdl",     1400, 1,  0,  0,  3,  4,  1,  1,  false, true },
-   {WEAPON_UMP45,		"weapon_ump45",     "ump45.mdl",     1700, 1,  2,  2,  3,  5,  3,  3,  false, true },
-   {WEAPON_AK47,		"weapon_ak47",      "ak47.mdl",      2500, 1,  0,  0,  4,  1,  2,  2,  true,  true },
-   {WEAPON_SG552,		"weapon_sg552",     "sg552.mdl",     3500, 1,  0, -1,  4,  2,  4,  4,  true,  true },
-   {WEAPON_M4A1,		"weapon_m4a1",      "m4a1.mdl",      3100, 1,  1,  1,  4,  3,  3,  3,  true,  true },
-   {WEAPON_GALIL,		"weapon_galil",     "galil.mdl",     2000, 1,  0,  0,  4,  -1, 1,  1,  true,  true },
-   {WEAPON_FAMAS,		"weapon_famas",     "famas.mdl",     2250, 1,  1,  1,  4,  -1, 1,  1,  true,  true },
-   {WEAPON_AUG,			"weapon_aug",       "aug.mdl",       3500, 1,  1,  1,  4,  4,  4,  4,  true,  true },
-   //{WEAPON_SCOUT,		"weapon_scout",     "scout.mdl",     2750, 1,  2,  0,  4,  5,  3,  2,  true,  false},
-   {WEAPON_SCOUT,		"weapon_scout",		"scout.mdl",	 2750, 1,  2,  0,  4,  5,  3,  2,  false, false },
-   {WEAPON_AWP,			"weapon_awp",       "awp.mdl",       4750, 1,  2,  0,  4,  6,  5,  6,  true,  false},
-   {WEAPON_G3SG1,		"weapon_g3sg1",     "g3sg1.mdl",     5000, 1,  0,  2,  4,  7,  6,  6,  true,  false},
-   {WEAPON_SG550,		"weapon_sg550",     "sg550.mdl",     4200, 1,  1,  1,  4,  8,  5,  5,  true,  false},
-   {WEAPON_M249,		"weapon_m249",      "m249.mdl",      5750, 1,  2,  1,  5,  1,  1,  1,  true,  true },
-   {WEAPON_SHIELDGUN,	"weapon_shield",    "shield.mdl",    2200, 0,  1,  1,  8,  -1, 8,  8,  false, false},
-   {0,					"",                 "",              0,    0,  0,  0,  0,   0, 0,  0,  false, false}
+   //   {WEAPON_DEAGLE,		"weapon_deagle",    "deagle.mdl",    650,  1,  2,  2,  1,  3,  4,  4,  true,  false},
+	  {WEAPON_DEAGLE,		"weapon_deagle",	"deagle.mdl",	 650,  1,  0,  0,  1,  3,  4,  4,  true,  false},
+	  {WEAPON_P228,		"weapon_p228",      "p228.mdl",      600,  1,  2,  2,  1,  4,  3,  3,  false, false},
+	  //{WEAPON_ELITE,		"weapon_elite",		"elite.mdl",	 1000, 1,  0,  0,  1,  5,  5,  5, false, false },
+	   {WEAPON_ELITE,		"weapon_elite",     "elite.mdl",     1000, 1,  2,  2,  1,  5,  5,  5,  false, false},
+	   {WEAPON_FN57,		"weapon_fiveseven", "fiveseven.mdl", 750,  1,  1,  1,  1,  6,  5,  5,  false, false},
+	   {WEAPON_M3,			"weapon_m3",        "m3.mdl",        1700, 1,  2, -1,  2,  1,  1,  1,  false, false},
+	   {WEAPON_XM1014,		"weapon_xm1014",    "xm1014.mdl",    3000, 1,  2, -1,  2,  2,  2,  2,  false, false},
+	   {WEAPON_MP5,			"weapon_mp5navy",   "mp5.mdl",       1500, 1,  2,  1,  3,  1,  2,  2,  false, true },
+	   {WEAPON_TMP,			"weapon_tmp",       "tmp.mdl",       1250, 1,  1,  1,  3,  2,  1,  1,  false, true },
+	   {WEAPON_P90,			"weapon_p90",       "p90.mdl",       2350, 1,  2,  1,  3,  3,  4,  4,  false, true },
+	   {WEAPON_MAC10,		"weapon_mac10",     "mac10.mdl",     1400, 1,  0,  0,  3,  4,  1,  1,  false, true },
+	   {WEAPON_UMP45,		"weapon_ump45",     "ump45.mdl",     1700, 1,  2,  2,  3,  5,  3,  3,  false, true },
+	   {WEAPON_AK47,		"weapon_ak47",      "ak47.mdl",      2500, 1,  0,  0,  4,  1,  2,  2,  true,  true },
+	   {WEAPON_SG552,		"weapon_sg552",     "sg552.mdl",     3500, 1,  0, -1,  4,  2,  4,  4,  true,  true },
+	   {WEAPON_M4A1,		"weapon_m4a1",      "m4a1.mdl",      3100, 1,  1,  1,  4,  3,  3,  3,  true,  true },
+	   {WEAPON_GALIL,		"weapon_galil",     "galil.mdl",     2000, 1,  0,  0,  4,  -1, 1,  1,  true,  true },
+	   {WEAPON_FAMAS,		"weapon_famas",     "famas.mdl",     2250, 1,  1,  1,  4,  -1, 1,  1,  true,  true },
+	   {WEAPON_AUG,			"weapon_aug",       "aug.mdl",       3500, 1,  1,  1,  4,  4,  4,  4,  true,  true },
+	   //{WEAPON_SCOUT,		"weapon_scout",     "scout.mdl",     2750, 1,  2,  0,  4,  5,  3,  2,  true,  false},
+	   {WEAPON_SCOUT,		"weapon_scout",		"scout.mdl",	 2750, 1,  2,  0,  4,  5,  3,  2,  false, false },
+	   {WEAPON_AWP,			"weapon_awp",       "awp.mdl",       4750, 1,  2,  0,  4,  6,  5,  6,  true,  false},
+	   {WEAPON_G3SG1,		"weapon_g3sg1",     "g3sg1.mdl",     5000, 1,  0,  2,  4,  7,  6,  6,  true,  false},
+	   {WEAPON_SG550,		"weapon_sg550",     "sg550.mdl",     4200, 1,  1,  1,  4,  8,  5,  5,  true,  false},
+	   {WEAPON_M249,		"weapon_m249",      "m249.mdl",      5750, 1,  2,  1,  5,  1,  1,  1,  true,  true },
+	   {WEAPON_SHIELDGUN,	"weapon_shield",    "shield.mdl",    2200, 0,  1,  1,  8,  -1, 8,  8,  false, false},
+	   {0,					"",                 "",              0,    0,  0,  0,  0,   0, 0,  0,  false, false}
 };
 
 // weapon firing delay based on skill (min and max delay for each weapon)
@@ -308,7 +308,7 @@ MenuText g_menus[26] =
 	// weapon mode select menu
 	{
 		0x27f,
-		"\\ySyPB Weapon Mode\\w\v\v"
+		"\\ySyPBM Weapon Mode\\w\v\v"
 		"1. Knives only\v"
 		"2. Pistols only\v"
 		"3. Shotguns only\v"
@@ -322,10 +322,10 @@ MenuText g_menus[26] =
 	// personality select menu
 	{
 		0x20f,
-		"\\ySyPB Personality\\w\v\v"
+		"\\ySyPBM Personality\\w\v\v"
 		"1. Random\v"
 		"2. Normal\v"
-		"3. Aggressive\v"
+		"3. Rusher\v"
 		"4. Careful\v\v"
 		"0. Exit"
 	},
