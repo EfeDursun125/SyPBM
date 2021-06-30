@@ -4,14 +4,12 @@ SyPB Modification is based on SyPB 1.48, in SyPB 1.49 - 1.50 versions has a cras
 The Developer of the SyPB doesn't have time for develop anymore, original project is so large.
 
 # Last SyPBM changes
-- Zombie AI Duck speed improve
-- AI Improvements
-- New TDM Mode
-- Deathmatch AI improve
-- Human bots now can use flares in zombie mode
-- Human bots now can use flashlight in zombie mode
-- Aim fix
-- Pathing improve
+- AS_ maps crash fix
+- Now waypoint radius is now squared
+- Optimizated code
+- Some reworks
+- Now survivor bots never try pickup weapons in ZP
+
 
 # How to install
 1. You must have original sypb & metamod (not required for sypbm 1.53 and higher versions).
