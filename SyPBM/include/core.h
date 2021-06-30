@@ -31,8 +31,8 @@
 // $Id:$
 //
 
-#ifndef SyPBM_INCLUDED
-#define SyPBM_INCLUDED
+#ifndef SyPB_INCLUDED
+#define SyPB_INCLUDED
 
 #include <stdio.h>
 #include <memory.h>
@@ -78,7 +78,8 @@ enum BotTask
 	TASK_HIDE,
 	TASK_BLINDED,
 	TASK_SPRAYLOGO,
-	TASK_MOVETOTARGET
+	TASK_MOVETOTARGET,
+	TASK_GOINGFORCAMP
 };
 
 // supported cs's
@@ -432,8 +433,9 @@ const int FV_VISTABLE = 2;
 const float TASKPRI_NORMAL = 35.0f;
 const float TASKPRI_PAUSE = 36.0f;
 const float TASKPRI_CAMP = 37.0f;
-const float TASKPRI_SPRAYLOGO = 38.0f;
-const float TASKPRI_FOLLOWUSER = 39.0f;
+const float TASKPRI_GOINGFORCAMP = 38.0f;
+const float TASKPRI_SPRAYLOGO = 39.0f;
+const float TASKPRI_FOLLOWUSER = 41.0f;
 const float TASKPRI_MOVETOPOSITION = 50.0f;
 const float TASKPRI_DEFUSEBOMB = 89.0f;
 const float TASKPRI_PLANTBOMB = 89.0f;
@@ -454,7 +456,7 @@ const int Const_MaxDamageValue = 2040;
 const int Const_MaxGoalValue = 2040;
 const int Const_MaxKillHistory = 16;
 const int Const_MaxRegMessages = 256;
-const int Const_MaxWaypoints = 1024;
+const int Const_MaxWaypoints = 2048;
 const int Const_MaxWeapons = 32;
 const int Const_NumWeapons = 26;
 
@@ -783,7 +785,7 @@ private:
 	int m_voicePitch; // bot voice pitch
 	bool m_isZombieBot; // checks bot if zombie
 	int m_team; // team
-	bool m_isAlive;
+	int m_boostingallowed;
 
 	bool m_duckDefuse; // should or not bot duck to defuse bomb
 	float m_duckDefuseCheckTime; // time to check for ducking for defuse
@@ -1053,6 +1055,7 @@ public:
 
 	edict_t* m_doubleJumpEntity; // pointer to entity that request double jump
 	edict_t* m_radioEntity; // pointer to entity issuing a radio command
+	edict_t* m_self; // self
 	int m_radioOrder; // actual command
 
 	float m_duckForJump; // is bot needed to duck for double jump
@@ -1071,6 +1074,7 @@ public:
 
 	Vector m_waypointOrigin; // origin of waypoint
 	Vector m_destOrigin; // origin of move destination
+	Vector m_bestOrigin; // origin of move destination
 	Vector m_position; // position to move to in move to position task
 	Vector m_doubleJumpOrigin; // origin of double jump
 	Vector m_lastBombPosition; // origin of last remembered bomb position
@@ -1185,6 +1189,8 @@ public:
 	void ChatMessage(int type, bool isTeamSay = false);
 	void UseChatterMessage(int type);
 	void RadioMessage(int message);
+	void PushChatterMessage(int message);
+	void InstantChatter(int type);
 
 	void Kill(void);
 	void Kick(void);
@@ -1472,6 +1478,7 @@ extern float Clamp(float a, float b, float c);
 extern void SetGameMod(int gamemode);
 extern bool IsZombieMode(void);
 extern bool IsDeathmatchMode(void);
+extern bool IsValidWaypoint(int index);
 extern bool ChanceOf(int number);
 extern float Squared(float number);
 extern float GetDistanceSquared(Vector a);
