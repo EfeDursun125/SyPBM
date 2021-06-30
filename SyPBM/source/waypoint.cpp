@@ -297,7 +297,7 @@ void Waypoint::ChangeZBCampPoint(Vector origin)
         m_zmHmPoints.Push(point[0]);
 
     int newPoint = FindNearest(origin);
-    if (newPoint >= 0 && newPoint < g_numWaypoints && newPoint != point[0] && newPoint != point[1])
+    if (newPoint != -1 && newPoint != point[0] && newPoint != point[1])
         m_zmHmPoints.Push(newPoint);
 }
 
@@ -369,7 +369,7 @@ int Waypoint::FindNearest(Vector origin, float minDistance, int flags, edict_t* 
     }
 
     // SyPB Pro P.42 - Move Target improve
-    if (mode >= 0 && mode < g_numWaypoints)
+    if (mode != -1)
     {
         int cdWPIndex[checkPoint];
         float cdWPDistance[checkPoint];
@@ -417,7 +417,7 @@ int Waypoint::FindNearest(Vector origin, float minDistance, int flags, edict_t* 
     {
         for (int i = 0; i < checkPoint; i++)
         {
-            if (wpIndex[i] < 0 || wpIndex[i] >= g_numWaypoints)
+            if (IsValidWaypoint(wpIndex[i]))
                 continue;
 
             if (!Reachable(entity, wpIndex[i]))
@@ -510,8 +510,7 @@ void Waypoint::SgdWp_Set(const char* modset)
         g_sgdWaypoint = false;
         g_waypointOn = false;
     }
-    else if ((stricmp(modset, "save") == 0 || stricmp(modset, "save_non-check") == 0) &&
-        g_sgdWaypoint)
+    else if ((stricmp(modset, "save") == 0 || stricmp(modset, "save_non-check") == 0) && g_sgdWaypoint)
     {
         // SyPB Pro P.45 - SgdWP 
         if (stricmp(modset, "save_non-check") == 0 || g_waypoint->NodesValid())
@@ -1049,11 +1048,12 @@ void Waypoint::CreatePath(char dir)
         CenterPrint("Unable to find nearest waypoint in 75 units");
         return;
     }
+
     int nodeTo = m_facingAtIndex;
 
-    if (nodeTo < 0 || nodeTo >= g_numWaypoints)
+    if (!IsValidWaypoint(nodeTo))
     {
-        if (m_cacheWaypointIndex >= 0 && m_cacheWaypointIndex < g_numWaypoints)
+        if (IsValidWaypoint(m_cacheWaypointIndex))
             nodeTo = m_cacheWaypointIndex;
         else
         {
@@ -1105,16 +1105,17 @@ void Waypoint::DeletePath(void)
     int nodeFrom = FindNearest(GetEntityOrigin(g_hostEntity), 75.0f);
     int index = 0;
 
-    if (nodeFrom == -1)
+    if (!IsValidWaypoint(nodeFrom))
     {
         CenterPrint("Unable to find nearest waypoint in 75 units");
         return;
     }
+
     int nodeTo = m_facingAtIndex;
 
-    if (nodeTo < 0 || nodeTo >= g_numWaypoints)
+    if (!IsValidWaypoint(nodeTo))
     {
-        if (m_cacheWaypointIndex >= 0 && m_cacheWaypointIndex < g_numWaypoints)
+        if (IsValidWaypoint(m_cacheWaypointIndex))
             nodeTo = m_cacheWaypointIndex;
         else
         {
@@ -1159,6 +1160,7 @@ void Waypoint::DeletePath(void)
             return;
         }
     }
+
     CenterPrint("There is already no path on this waypoint");
 }
 
@@ -1166,13 +1168,14 @@ void Waypoint::CacheWaypoint(void)
 {
     int node = FindNearest(GetEntityOrigin(g_hostEntity), 75.0f);
 
-    if (node == -1)
+    if (!IsValidWaypoint(node))
     {
         m_cacheWaypointIndex = -1;
         CenterPrint("Cached waypoint cleared (nearby point not found in 75 units range)");
 
         return;
     }
+
     m_cacheWaypointIndex = node;
     CenterPrint("Waypoint #%d has been put into memory", m_cacheWaypointIndex);
 }
@@ -1952,7 +1955,7 @@ void Waypoint::Think(void)
         // find the distance from the last used waypoint
         float distance = (m_lastWaypoint - GetEntityOrigin(g_hostEntity)).GetLength();
 
-        if (distance > 16384)
+        if (distance > 128)
         {
             // check that no other reachable waypoints are nearby...
             for (int i = 0; i < g_numWaypoints; i++)
@@ -1967,7 +1970,7 @@ void Waypoint::Think(void)
             }
 
             // make sure nearest waypoint is far enough away...
-            if (nearestDistance >= 16384)
+            if (nearestDistance >= 128)
                 Add(0);  // place a waypoint here
         }
     }
@@ -2061,21 +2064,21 @@ void Waypoint::ShowWaypointMsg(void)
         return;
 
     // draw arrow to a some importaint waypoints
-    if ((m_findWPIndex != -1 && m_findWPIndex < g_numWaypoints) || (m_cacheWaypointIndex != -1 && m_cacheWaypointIndex < g_numWaypoints) || (m_facingAtIndex != -1 && m_facingAtIndex < g_numWaypoints))
+    if (IsValidWaypoint(m_findWPIndex) || IsValidWaypoint(m_cacheWaypointIndex) || IsValidWaypoint(m_facingAtIndex))
     {
         // check for drawing code
         if (m_arrowDisplayTime + 0.5 < engine->GetTime())
         {
             // finding waypoint - pink arrow
-            if (m_findWPIndex != -1)
+            if (IsValidWaypoint(m_findWPIndex))
                 engine->DrawLine(g_hostEntity, GetEntityOrigin(g_hostEntity), m_paths[m_findWPIndex]->origin, Color(128, 0, 128, 255), 10, 0, 0, 5, LINE_ARROW);
 
             // cached waypoint - yellow arrow
-            if (m_cacheWaypointIndex != -1)
+            if (IsValidWaypoint(m_cacheWaypointIndex))
                 engine->DrawLine(g_hostEntity, GetEntityOrigin(g_hostEntity), m_paths[m_cacheWaypointIndex]->origin, Color(255, 255, 0, 255), 10, 0, 0, 5, LINE_ARROW);
 
             // waypoint user facing at - white arrow
-            if (m_facingAtIndex != -1)
+            if (IsValidWaypoint(m_facingAtIndex))
                 engine->DrawLine(g_hostEntity, GetEntityOrigin(g_hostEntity), m_paths[m_facingAtIndex]->origin, Color(255, 255, 255, 255), 10, 0, 0, 5, LINE_ARROW);
 
             m_arrowDisplayTime = engine->GetTime();
@@ -2128,18 +2131,18 @@ void Waypoint::ShowWaypointMsg(void)
         // draw the radius circle
         Vector origin = (path->flags & WAYPOINT_CROUCH) ? path->origin : path->origin - Vector(0, 0, 18);
 
-        // if radius is nonzero, draw a full circle
+        // if radius is nonzero, draw a square
         if (path->radius > 0.0f)
         {
-            /*const float root = sqrtf(path->radius * path->radius * 0.5f);
+            const float root = sqrtf(path->radius * path->radius * 0.6f);
             const Color& def = Color(0, 0, 255, 255);
 
             engine->DrawLine(g_hostEntity, origin + Vector(root, root, 0), origin + Vector(-root, root, 0), def, 5, 0, 0, 10);
             engine->DrawLine(g_hostEntity, origin + Vector(root, root, 0), origin + Vector(root, -root, 0), def, 5, 0, 0, 10);
             engine->DrawLine(g_hostEntity, origin + Vector(-root, -root, 0), origin + Vector(root, -root, 0), def, 5, 0, 0, 10);
-            engine->DrawLine(g_hostEntity, origin + Vector(-root, -root, 0), origin + Vector(-root, root, 0), def, 5, 0, 0, 10);*/
+            engine->DrawLine(g_hostEntity, origin + Vector(-root, -root, 0), origin + Vector(-root, root, 0), def, 5, 0, 0, 10);
 
-            const float root = sqrtf(path->radius * path->radius * 0.5f);
+            /*const float root = sqrtf(path->radius * path->radius * 0.5f);
             const Color& def = Color(0, 0, 255, 255);
 
             engine->DrawLine(g_hostEntity, origin + Vector(path->radius, 0.0f, 0.0f), origin + Vector(root, -root, 0), def, 5, 0, 0, 10);
@@ -2152,7 +2155,7 @@ void Waypoint::ShowWaypointMsg(void)
             engine->DrawLine(g_hostEntity, origin + Vector(-root, root, 0.0f), origin + Vector(0, path->radius, 0), def, 5, 0, 0, 10);
 
             engine->DrawLine(g_hostEntity, origin + Vector(0.0f, path->radius, 0.0f), origin + Vector(root, root, 0), def, 5, 0, 0, 10);
-            engine->DrawLine(g_hostEntity, origin + Vector(root, root, 0.0f), origin + Vector(path->radius, 0, 0), def, 5, 0, 0, 10);
+            engine->DrawLine(g_hostEntity, origin + Vector(root, root, 0.0f), origin + Vector(path->radius, 0, 0), def, 5, 0, 0, 10);*/
         }
         else
         {
@@ -2411,7 +2414,7 @@ bool Waypoint::NodesValid(void)
             if (visited[index])
                 continue; // skip this waypoint as it's already visited
 
-            if (index >= 0 && index < g_numWaypoints)
+            if (IsValidWaypoint(index))
             {
                 PathNode* newNode = new PathNode();
 
@@ -2627,7 +2630,7 @@ bool Waypoint::LoadPathMatrix(void)
 
 int Waypoint::GetPathDistance(int srcIndex, int destIndex)
 {
-    if (srcIndex < 0 || srcIndex >= g_numWaypoints || destIndex < 0 || destIndex >= g_numWaypoints)
+    if (!IsValidWaypoint(srcIndex) || !IsValidWaypoint(destIndex))
         return 1;
 
     return *(m_distMatrix + (srcIndex * g_numWaypoints) + destIndex);
@@ -2640,14 +2643,14 @@ float Waypoint::GetPathDistanceFloat(int srcIndex, int destIndex)
 
 void Waypoint::SetGoalVisited(int index)
 {
-    if (index < 0 || index >= g_numWaypoints)
+    if (!IsValidWaypoint(index))
         return;
 
     if (!IsGoalVisited(index) && (m_paths[index]->flags & WAYPOINT_GOAL))
     {
         int bombPoint = FindNearest(GetBombPosition());
 
-        if (bombPoint != index)
+        if (IsValidWaypoint(bombPoint) && bombPoint != index)
             m_visitedGoals.Push(index);
     }
 }
@@ -2659,6 +2662,7 @@ bool Waypoint::IsGoalVisited(int index)
         if (m_visitedGoals[i] == index)
             return true;
     }
+
     return false;
 }
 
@@ -2894,12 +2898,11 @@ void Waypoint::SetLearnJumpWaypoint(int mod)
 
 void Waypoint::SetFindIndex(int index)
 {
-    m_findWPIndex = index;
-
-    if (m_findWPIndex < g_numWaypoints)
+    if (IsValidWaypoint(index))
+    {
+        m_findWPIndex = index;
         ServerPrint("Showing Direction to Waypoint #%d", m_findWPIndex);
-    else
-        m_findWPIndex = -1;
+    }
 }
 
 int Waypoint::AddGoalScore(int index, int other[4])

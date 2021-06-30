@@ -39,6 +39,8 @@ ConVar sypbm_nametag("sypbm_nametag", "2");
 
 ConVar sypb_join_after_player("sypbm_join_after_player", "0");
 
+ConVar sypbm_think_fps("sypbm_think_fps", "30.0");
+
 BotControl::BotControl(void)
 {
 	// this is a bot manager class constructor
@@ -332,7 +334,7 @@ void BotControl::Think(void)
 			//m_bots[i]->m_thinkTimer = engine->GetTime() + (1.0f / 24.9f);
 
 			// SyPB Pro P.48 - Bot think improve
-			m_bots[i]->m_thinkTimer = engine->GetTime() + ((1.0f / 24.9f) * engine->RandomFloat(0.90f, 1.05f));
+			m_bots[i]->m_thinkTimer = engine->GetTime() + ((1.0f / 24.9f) * engine->RandomFloat(0.9f, 1.1f));
 
 			m_bots[i]->Think();
 
@@ -342,9 +344,6 @@ void BotControl::Think(void)
 		}
 		else if (!sypb_stopbots.GetBool())
 			m_bots[i]->FacePosition();
-
-		//m_bots[i]->pev->angles.ClampAngles();
-		//m_bots[i]->pev->v_angle.ClampAngles();
 
 		m_bots[i]->RunPlayerMovement(); // run the player movement 
 	}
@@ -663,11 +662,11 @@ void BotControl::RemoveFromTeam(Team team, bool removeAll)
 {
 	// this function remove random bot from specified team (if removeAll value = 1 then removes all players from team)
 
-	for (int i = 0; i < engine->GetMaxClients(); i++)
+	for (const auto& bot : m_bots)
 	{
-		if (m_bots[i] != null && team == GetTeam(m_bots[i]->GetEntity()))
+		if (bot != null && team == bot->m_team)
 		{
-			m_bots[i]->Kick();
+			bot->Kick();
 
 			if (!removeAll)
 				break;
@@ -737,16 +736,17 @@ void BotControl::KillAll(int team)
 {
 	// this function kills all bots on server (only this dll controlled bots)
 
-	for (int i = 0; i < engine->GetMaxClients(); i++)
+	for (const auto& bot : m_bots)
 	{
-		if (m_bots[i] != null)
+		if (bot != null)
 		{
-			if (team != -1 && team != GetTeam(m_bots[i]->GetEntity()))
+			if (team != -1 && team != bot->m_team)
 				continue;
 
-			m_bots[i]->Kill();
+			bot->Kill();
 		}
 	}
+
 	CenterPrint("All bots are killed.");
 }
 
@@ -754,11 +754,12 @@ void BotControl::RemoveRandom(void)
 {
 	// this function removes random bot from server (only sypb's)
 
-	for (int i = 0; i < engine->GetMaxClients(); i++)
+	for (const auto& bot : m_bots)
 	{
-		if (m_bots[i] != null)  // is this slot used?
+		if (bot != null)  // is this slot used?
 		{
-			m_bots[i]->Kick();
+			bot->Kick();
+
 			break;
 		}
 	}
@@ -838,11 +839,12 @@ int BotControl::GetBotsNum(void)
 
 	int count = 0;
 
-	for (int i = 0; i < engine->GetMaxClients(); i++)
+	for (const auto& bot : m_bots)
 	{
-		if (m_bots[i] != null)
+		if (bot != null)
 			count++;
 	}
+
 	return count;
 }
 
@@ -1316,6 +1318,8 @@ void Bot::NewRound(void)
 	// and put buying into its message queue
 	PushMessageQueue(CMENU_BUY);
 	PushTask(TASK_NORMAL, TASKPRI_NORMAL, -1, 0.0, true);
+
+	m_updateInterval = g_gameVersion == CSVER_VERYOLD ? 0.0f : (1.0f / engine->Clamp(sypbm_think_fps.GetFloat(), 30.0f, 60.0f));
 }
 
 void Bot::Kill(void)

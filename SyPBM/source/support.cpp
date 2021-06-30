@@ -938,6 +938,14 @@ float Squared(float number)
 	return (number * number);
 }
 
+bool IsValidWaypoint(int index)
+{
+	if (index <= -1 || index > g_numWaypoints)
+		return false;
+
+	return true;
+}
+
 int GetGameMod(void)
 {
 	// SyPB Pro P.2

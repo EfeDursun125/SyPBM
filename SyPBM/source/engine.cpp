@@ -294,67 +294,6 @@ void Engine::PrintServer(const char* format, ...)
     g_engfuncs.pfnServerPrint(buffer);
 }
 
-float Engine::GetWaveLength(const char* fileName)
-{
-    extern ConVar sypbm_chatter_path;
-    const char* filePath = FormatBuffer("%s/%s/%s.wav", GetModName(), sypbm_chatter_path.GetString(), fileName);
-
-    File fp(filePath, "rb");
-
-    // we're got valid handle?
-    if (!fp.IsValid())
-        return 0.0f;
-
-    // check if we have engine function for this
-    if (g_engfuncs.pfnGetApproxWavePlayLen != NULL)
-    {
-        fp.Close();
-        return g_engfuncs.pfnGetApproxWavePlayLen(filePath) / 1000.0f;
-    }
-
-    // else fuck with manual search
-    struct WavHeader
-    {
-        char riffChunkId[4];
-        unsigned long packageSize;
-        char chunkID[4];
-        char formatChunkId[4];
-        unsigned long formatChunkLength;
-        unsigned short dummy;
-        unsigned short channels;
-        unsigned long sampleRate;
-        unsigned long bytesPerSecond;
-        unsigned short bytesPerSample;
-        unsigned short bitsPerSample;
-        char dataChunkId[4];
-        unsigned long dataChunkLength;
-    } waveHdr;
-
-    memset(&waveHdr, 0, sizeof(waveHdr));
-
-    if (fp.Read(&waveHdr, sizeof(WavHeader)) == 0)
-    {
-        AddLogEntry(LOG_ERROR, "Wave File %s - has wrong or unsupported format", filePath);
-        return 0.0f;
-    }
-
-    if (strncmp(waveHdr.chunkID, "WAVE", 4) != 0)
-    {
-        AddLogEntry(LOG_ERROR, "Wave File %s - has wrong wave chunk id", filePath);
-        return 0.0f;
-    }
-
-    fp.Close();
-
-    if (waveHdr.dataChunkLength == 0)
-    {
-        AddLogEntry(LOG_ERROR, "Wave File %s - has zero length!", filePath);
-        return 0.0f;
-    }
-
-    return static_cast <float> (waveHdr.dataChunkLength) / static_cast <float> (waveHdr.bytesPerSecond);
-}
-
 int Engine::GetMaxClients(void)
 {
     return g_pGlobals->maxClients;

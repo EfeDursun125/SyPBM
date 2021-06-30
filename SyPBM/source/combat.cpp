@@ -30,12 +30,12 @@ int Bot::GetNearbyFriendsNearPosition(Vector origin, int radius)
 {
 	int count = 0;
 
-	for (int i = 0; i < engine->GetMaxClients(); i++)
+	for (const auto& client : g_clients)
 	{
-		if (!(g_clients[i].flags & CFLAG_USED) || !(g_clients[i].flags & CFLAG_ALIVE) || g_clients[i].team != m_team || g_clients[i].ent == GetEntity())
+		if (!(client.flags & CFLAG_USED) || !(client.flags & CFLAG_ALIVE) || client.team != m_team || client.ent == GetEntity())
 			continue;
 
-		if ((g_clients[i].origin - origin).GetLength() < float(radius))
+		if ((client.origin - origin).GetLength() < float(radius))
 			count++;
 	}
 
@@ -46,12 +46,12 @@ int Bot::GetNearbyEnemiesNearPosition(Vector origin, int radius)
 {
 	int count = 0;
 
-	for (int i = 0; i < engine->GetMaxClients(); i++)
+	for (const auto& client : g_clients)
 	{
-		if (!(g_clients[i].flags & CFLAG_USED) || !(g_clients[i].flags & CFLAG_ALIVE) || g_clients[i].team == m_team)
+		if (!(client.flags & CFLAG_USED) || !(client.flags & CFLAG_ALIVE) || client.team == m_team)
 			continue;
 
-		if ((g_clients[i].origin - origin).GetLength() < float(radius))
+		if ((client.origin - origin).GetLength() < float(radius))
 			count++;
 	}
 
@@ -1166,7 +1166,7 @@ void Bot::CombatFight(void)
 	{
 		m_moveSpeed = pev->maxspeed;
 
-		if ((pev->origin - m_destOrigin).GetLength() < 128.0f || (pev->origin - GetEntityOrigin(m_moveTargetEntity)).GetLength() < 128.0f)
+		if ((pev->origin - m_destOrigin).GetLength() <= 128.0f || (pev->origin - GetEntityOrigin(m_moveTargetEntity)).GetLength() <= 128.0f)
 		{
 			pev->button |= IN_ATTACK;
 			m_destOrigin = GetEntityOrigin(m_enemy);
@@ -1220,33 +1220,41 @@ void Bot::CombatFight(void)
 						m_destOrigin = GetEntityOrigin(m_enemy); //g_waypoint->GetPath(g_waypoint->FindSafestForHuman(m_enemy, GetEntity(), 768.0f))->origin;
 						m_moveSpeed = -pev->maxspeed;
 						m_checkFall = true;
+						m_moveToGoal = false;
 
 						return;
 					}
 					else if (sypbm_escape.GetInt() == 0 && distance <= (baseDistance + (baseDistance / 10)))
 						m_moveSpeed = 0.0f;
 					else
+					{
+						m_moveToGoal = true;
 						m_moveSpeed = pev->maxspeed;
+					}
 				}
 				else
+				{
+					m_moveToGoal = true;
 					m_moveSpeed = pev->maxspeed;
+				}
 			}
 		}
 
 		return;
 	}
-	else if(GetCurrentTask()->taskID != TASK_SEEKCOVER && !IsZombieMode())
+	else if(!IsZombieMode())
 	{
 		DeleteSearchNodes();
 
+		m_lastEnemy = m_enemy;
+
 		m_destOrigin = GetEntityOrigin(m_enemy);
 
-		// SyPBM 1.53 - We don't have chance
-		if (m_personality != PERSONALITY_RUSHER && (m_isReloading || (pev->health + (m_personality == PERSONALITY_CAREFUL ? 15 : 45) < m_enemy->v.health)))
+		if (m_currentWeapon != WEAPON_KNIFE && (pev->origin - m_enemy->v.origin).GetLength() <= 256.0f) // get back!
 		{
-			GetCurrentTask()->taskID = TASK_SEEKCOVER;
-			GetCurrentTask()->canContinue = false;
-			GetCurrentTask()->desire = TASKPRI_FIGHTENEMY + 2.0f;
+			m_moveSpeed = -pev->maxspeed;
+
+			return;
 		}
 
 		float distance = (m_lookAt - EyePosition()).GetLength2D();  // how far away is the enemy scum?
@@ -1386,8 +1394,8 @@ void Bot::CombatFight(void)
 			{
 				const Vector& src = pev->origin - Vector(0, 0, 18.0f);
 
-				if ((m_visibility & (VISIBILITY_HEAD | VISIBILITY_BODY)) && GetCurrentTask()->taskID != TASK_SEEKCOVER && GetCurrentTask()->taskID != TASK_HUNTENEMY && IsVisible(src, m_enemy))
-					m_duckTime = engine->GetTime() + 1.0f;
+				if ((m_visibility & (VISIBILITY_HEAD | VISIBILITY_BODY)) && m_enemy->v.weapons != WEAPON_KNIFE && IsVisible(src, m_enemy))
+					m_duckTime = engine->GetTime() + m_updateInterval + 0.2f;
 
 				m_moveSpeed = 0.0f;
 				m_strafeSpeed = 0.0f;
@@ -1680,7 +1688,7 @@ void Bot::SelectWeaponbyNumber(int num)
 void Bot::CommandTeam(void)
 {
 	// SyPB Pro P.37 - small chanage
-	if (GetGameMod() != MODE_BASE)
+	if (GetGameMod() != MODE_BASE && GetGameMod() != MODE_TDM)
 		return;
 
 	// prevent spamming
@@ -1691,36 +1699,40 @@ void Bot::CommandTeam(void)
 	bool memberExists = false;
 
 	// search teammates seen by this bot
-	for (int i = 0; i < engine->GetMaxClients(); i++)
+	for (const auto& client : g_clients)
 	{
-		if (!(g_clients[i].flags & CFLAG_USED) || !(g_clients[i].flags & CFLAG_ALIVE) || g_clients[i].team != m_team || g_clients[i].ent == GetEntity())
+		if (!(client.flags & CFLAG_USED) || !(client.flags & CFLAG_ALIVE) || client.team != m_team || client.ent == GetEntity())
 			continue;
 
 		memberExists = true;
 
-		if (EntityIsVisible(g_clients[i].origin))
+		if (EntityIsVisible(client.origin))
 		{
 			memberNear = true;
 			break;
 		}
 	}
 
-	if (memberNear) // has teammates ?
+	if (memberNear && ChanceOf(50)) // has teammates ?
 	{
 		if (m_personality == PERSONALITY_RUSHER)
 			RadioMessage(Radio_StormTheFront);
+		else if(m_personality == PERSONALITY_NORMAL)
+			RadioMessage(Radio_StickTogether);
 		else
 			RadioMessage(Radio_Fallback);
 	}
 	else if (memberExists)
-		if ((GetGameMod() == MODE_ZP || GetGameMod() == MODE_ZH) && m_isZombieBot)
-			RadioMessage(Radio_TakingFire);
-		else if (engine->RandomInt(1, 100) <= 50)
+	{
+		if (ChanceOf(25))
 			RadioMessage(Radio_NeedBackup);
-		else
+		else if (ChanceOf(25))
 			RadioMessage(Radio_EnemySpotted);
+		else if (ChanceOf(25))
+			RadioMessage(Radio_TakingFire);
+	}
 
-	m_timeTeamOrder = engine->GetTime() + engine->RandomFloat(5.0f, 30.0f);
+	m_timeTeamOrder = engine->GetTime() + engine->RandomFloat(10.0f, 30.0f);
 }
 
 bool Bot::IsGroupOfEnemies(Vector location, int numEnemies, int radius)
@@ -1728,21 +1740,22 @@ bool Bot::IsGroupOfEnemies(Vector location, int numEnemies, int radius)
 	int numPlayers = 0;
 
 	// search the world for enemy players...
-	for (int i = 0; i < engine->GetMaxClients(); i++)
+	for (const auto& client : g_clients)
 	{
-		if (!(g_clients[i].flags & CFLAG_USED) || !(g_clients[i].flags & CFLAG_ALIVE) || g_clients[i].ent == GetEntity())
+		if (!(client.flags & CFLAG_USED) || !(client.flags & CFLAG_ALIVE) || client.ent == GetEntity())
 			continue;
 
-		if ((GetEntityOrigin(g_clients[i].ent) - location).GetLength() < radius)
+		if ((GetEntityOrigin(client.ent) - location).GetLength() < radius)
 		{
 			// don't target our teammates...
-			if (g_clients[i].team == m_team)
+			if (client.team == m_team)
 				return false;
 
 			if (numPlayers++ > numEnemies)
 				return true;
 		}
 	}
+
 	return false;
 }
 
