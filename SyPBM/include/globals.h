@@ -47,6 +47,9 @@ extern bool g_editNoclip;
 extern bool g_isMetamod;
 extern bool g_isFakeCommand;
 extern bool g_leaderChoosen[2];
+extern bool g_analyzewaypoints;
+extern bool g_analyzeputrequirescrouch;
+extern bool g_onlyvispath;
 
 extern bool g_sgdWaypoint;
 extern bool g_sautoWaypoint;

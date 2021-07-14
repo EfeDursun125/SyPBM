@@ -398,7 +398,8 @@ enum WaypointFlag
 enum PathFlag
 {
 	PATHFLAG_JUMP = (1 << 0), // must jump for this connection
-	PATHFLAG_DOUBLE = (1 << 1) // must use friend for this connection
+	PATHFLAG_DOUBLE = (1 << 1), // must use friend for this connection
+	PATHFLAG_VISIBLE = (1 << 1) // must be visible
 };
 
 // defines waypoint connection types
@@ -408,7 +409,8 @@ enum PathConnection
 	PATHCON_INCOMING,
 	PATHCON_BOTHWAYS,
 	PATHCON_JUMPING,
-	PATHCON_BOOSTING
+	PATHCON_BOOSTING,
+	PATHCON_VISIBLE
 };
 
 // SyPB Support Game Mode
@@ -718,6 +720,7 @@ private:
 	float m_itemCheckTime; // time next search for items needs to be done
 	PickupType m_pickupType; // type of entity which needs to be used/picked up
 	Vector m_breakable; // origin of breakable
+	Vector m_lastDamageOrigin; // last damage origin
 
 	edict_t* m_pickupItem; // pointer to entity of item to use/pickup
 	edict_t* m_itemIgnore; // pointer to entity to ignore for pickup
@@ -784,8 +787,8 @@ private:
 	int m_reloadState; // current reload state
 	int m_voicePitch; // bot voice pitch
 	bool m_isZombieBot; // checks bot if zombie
+	bool m_isBomber; // checks bot has C4
 	int m_team; // team
-	int m_boostingallowed;
 
 	bool m_duckDefuse; // should or not bot duck to defuse bomb
 	float m_duckDefuseCheckTime; // time to check for ducking for defuse
@@ -906,9 +909,11 @@ private:
 
 	void GetCampDirection(Vector* dest);
 	int GetMessageQueue(void);
+	int FindGoalPost(int tactic, Array <int> defensive, Array <int> offsensive);
 	void FilterGoals(const Array <int>& goals, int* result);
 	bool GoalIsValid(void);
 	bool HeadTowardWaypoint(void);
+	bool HasNextPath(void);
 	float InFieldOfView(Vector dest);
 
 	bool IsBombDefusing(Vector bombOrigin);
@@ -1079,6 +1084,7 @@ public:
 	Vector m_doubleJumpOrigin; // origin of double jump
 	Vector m_lastBombPosition; // origin of last remembered bomb position
 	Vector m_goalaimposition; // goal aim position for tracking
+	Vector m_campposition; // camping position
 	Vector m_waypointaim; // waypoint aim
 
 	float m_viewDistance; // current view distance
@@ -1187,10 +1193,8 @@ public:
 	void ChatSay(bool teamSay, const char* text);
 
 	void ChatMessage(int type, bool isTeamSay = false);
-	void UseChatterMessage(int type);
 	void RadioMessage(int message);
 	void PushChatterMessage(int message);
-	void InstantChatter(int type);
 
 	void Kill(void);
 	void Kick(void);
@@ -1371,6 +1375,7 @@ private:
 	Array <int> m_rescuePoints;
 	Array <int> m_visitedGoals;
 	Array <int> m_zmHmPoints;  // SyPB Pro P.30 - Zombie Mode Human Camp
+	Array <int> m_otherPoints; // SyPBM 1.56
 
 public:
 	bool m_redoneVisibility;
@@ -1380,8 +1385,10 @@ public:
 
 	void Initialize(void);
 
+	void Analyze(void);
+	void AnalyzeDeleteUselessWaypoints(void);
 	void InitTypes(int mode);
-	void AddPath(int addIndex, int pathIndex, float distance);
+	void AddPath(int addIndex, int pathIndex, float distance, int type = 0);
 	void AddPathJump(int addIndex, int pathIndex, float distance);
 	void AddPathBoost(int addIndex, int pathIndex, float distance);
 
@@ -1397,6 +1404,7 @@ public:
 
 	void Add(int flags, Vector waypointOrigin = nullvec);
 	void Delete(void);
+	void DeleteByIndex(int index);
 	void ToggleFlags(int toggleFlag);
 	void SetRadius(int radius);
 	bool IsConnected(int pointA, int pointB);
@@ -1424,6 +1432,7 @@ public:
 	//bool Reachable (Bot *bot, int index, Vector origin = nullvec);
 	bool Reachable(edict_t* entity, int index);
 	bool IsNodeReachable(Vector src, Vector destination);
+	bool IsNodeReachableWithJump(Vector src, Vector destination, int flags);
 	void Think(void);
 	void ShowWaypointMsg(void); // SyPB Pro P.38 - Show Waypoint Msg
 	bool NodesValid(void);
@@ -1456,7 +1465,6 @@ public:
 	int* GetWaypointPath() { return m_pathMatrix; }
 	int* GetWaypointDist() { return m_distMatrix; }
 };
-
 
 #define g_netMsg NetworkMsg::GetObjectPtr ()
 #define g_botManager BotControl::GetObjectPtr ()
@@ -1492,6 +1500,7 @@ extern bool IsLinux(void);
 extern bool TryFileOpen(char* fileName);
 extern bool IsDedicatedServer(void);
 extern bool IsVisible(const Vector& origin, edict_t* ent);
+extern Vector GetWalkablePosition(const Vector& origin, edict_t* ent = null);
 extern bool IsAlive(edict_t* ent);
 extern bool IsInViewCone(Vector origin, edict_t* ent);
 extern bool IsWeaponShootingThroughWall(int id);
