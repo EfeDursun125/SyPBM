@@ -47,6 +47,9 @@ bool g_waypointsChanged = true;
 bool g_autoWaypoint = false;
 bool g_bLearnJumpWaypoint = false;
 bool g_leaderChoosen[2] = { false, false };
+bool g_analyzewaypoints = false;
+bool g_analyzeputrequirescrouch = false;
+bool g_onlyvispath = false;
 
 bool g_sgdWaypoint = false;
 bool g_sautoWaypoint = false;
@@ -198,7 +201,8 @@ Task g_taskFilters[] =
    {null, null, TASK_HIDE, 0, -1, 0.0f, false},
    {null, null, TASK_BLINDED, 0, -1, 0.0f, false},
    {null, null, TASK_SPRAYLOGO, 0, -1, 0.0f, false},
-   {null, null, TASK_MOVETOTARGET, 0, -1, 0.0f, true}
+   {null, null, TASK_MOVETOTARGET, 0, -1, 0.0f, true},
+   {null, null, TASK_GOINGFORCAMP, 0, -1, 0.0f, true}
 };
 
 WeaponSelect g_weaponSelect[Const_NumWeapons + 1] =
@@ -435,7 +439,7 @@ MenuText g_menus[26] =
 		"\\w4. Avoid\v"
 		"\\y5. Rescue Zone\v"
 		"\\w6. Camping\v"
-		"7. Camp End\v"
+		"7. Sniper Camp End\v"
 		"\\r8. Map Goal\v"
 		"\\w9. Jump\v\v"
 		"0. Exit"

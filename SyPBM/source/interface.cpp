@@ -34,6 +34,8 @@ ConVar sypb_version("sypbm_version", PRODUCT_VERSION, VARTYPE_READONLY);
 ConVar sypb_lockzbot("sypbm_lockzbot", "1");
 ConVar sypb_showwp("sypbm_showwp", "0");
 
+ConVar sypbm_analyze_create_goal_waypoints("sypbm_analyze_starter_waypoints", "1");
+
 // SyPB Pro P.47 - SyPB Version MSG
 void SyPBVersionMSG(edict_t* entity = null)
 {
@@ -355,7 +357,53 @@ int BotCommandHandler_O(edict_t* ent, const String& arg0, const String& arg1, co
 			return 2;
 
 		// enables or disable waypoint displaying
-		if (stricmp(arg1, "on") == 0)
+		if (stricmp(arg1, "analyze") == 0)
+		{
+			g_analyzewaypoints = true;
+
+			ServerPrint("Waypoint Analyzing On (Please Manually Edit Waypoints For Best Results)");
+
+			ServerCommand("sypb wp on");
+
+			if (sypbm_analyze_create_goal_waypoints.GetInt() == 1)
+				g_waypoint->CreateBasic();
+		}
+
+		else if (stricmp(arg1, "analyzeoff") == 0)
+		{
+			g_waypoint->AnalyzeDeleteUselessWaypoints();
+
+			g_analyzewaypoints = false;
+
+			ServerPrint("Waypoint Analyzing Off");
+
+			g_waypoint->Save();
+
+			ServerCommand("sypb wp off");
+		}
+
+		else if (stricmp(arg1, "analyzefix") == 0)
+		{
+			g_waypoint->AnalyzeDeleteUselessWaypoints();
+
+			ServerCommand("sypb wp on");
+		}
+
+		else if (stricmp(arg1, "onlyvispath") == 0)
+		{
+			ServerPrint("Only visible paths are enabled");
+
+			g_onlyvispath = true;
+		}
+
+		else if (stricmp(arg1, "novispath") == 0)
+		{
+			ServerPrint("Only visible paths are disabled");
+
+			g_onlyvispath = false;
+		}
+
+		else if (stricmp(arg1, "on") == 0)
 		{
 			g_waypointOn = true;
 			ServerPrint("Waypoint Editing Enabled");
@@ -375,6 +423,7 @@ int BotCommandHandler_O(edict_t* ent, const String& arg0, const String& arg1, co
 				}
 				g_editNoclip ^= true; // switch on/off (XOR it!)
 			}
+
 			ServerCommand("sypb wp mdl on");
 		}
 
@@ -452,6 +501,7 @@ int BotCommandHandler_O(edict_t* ent, const String& arg0, const String& arg1, co
 			{
 				g_waypoint->Save();
 				ServerPrint(waypointSaveMessage);
+				CenterPrint("Waypoints are saved!");
 			}
 			else if (g_waypoint->NodesValid())
 			{
@@ -535,6 +585,18 @@ int BotCommandHandler_O(edict_t* ent, const String& arg0, const String& arg1, co
 		// creates bidirectional path from cahed to current waypoint
 		else if (stricmp(arg1, "create_both") == 0)
 			g_waypoint->CreatePath(PATHCON_BOTHWAYS);
+
+		// creates jump path from cahed to current waypoint
+		else if (stricmp(arg1, "create_jump") == 0)
+			g_waypoint->CreatePath(PATHCON_JUMPING);
+
+		// creates boosting path from cahed to current waypoint
+		else if (stricmp(arg1, "create_boost") == 0)
+			g_waypoint->CreatePath(PATHCON_BOOSTING);
+
+		// creates visible only path from cahed to current waypoint
+		else if (stricmp(arg1, "create_visible") == 0)
+			g_waypoint->CreatePath(PATHCON_VISIBLE);
 
 		// delete special path
 		else if (stricmp(arg1, "delete") == 0)
@@ -2609,6 +2671,9 @@ void StartFrame(void)
 	// for example if a new player joins the server, we should disconnect a bot, and if the
 	// player population decreases, we should fill the server with other bots.
 
+	if(g_analyzewaypoints == true)
+		g_waypoint->Analyze();
+
 	// SyPB Pro P.37 - Lock Add Zbot
 	if (sypb_lockzbot.GetBool())
 	{
@@ -2619,7 +2684,7 @@ void StartFrame(void)
 			// SyPB Pro P.39 - Add Msg
 			ServerPrint("sypbm_lockzbot is on, you cannot add ZBot");
 			ServerPrint("You can input sypbm_lockzbot unlock add Zbot");
-			ServerPrint("But, If you have use AMXX plug-in, I think this is not good choose");
+			ServerPrint("But, If you have use AMXX plug-in, I think this is not good choice");
 
 			CVAR_SET_FLOAT("bot_quota", 0);
 		}

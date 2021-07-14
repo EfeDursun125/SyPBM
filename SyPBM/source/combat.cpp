@@ -25,6 +25,7 @@
 #include <core.h>
 
 ConVar sypbm_escape("sypbm_zombie_escape_mode", "0");
+ConVar sypbm_zp_use_grenade_percent("sypbm_zp_use_grenade_percent", "10");
 
 int Bot::GetNearbyFriendsNearPosition(Vector origin, int radius)
 {
@@ -62,7 +63,7 @@ int Bot::GetNearbyEnemiesNearPosition(Vector origin, int radius)
 float Bot::GetEntityDistance(edict_t* entity)
 {
 	if (FNullEnt(entity))
-		return 9999.9f;
+		return 9999.0f;
 
 	float distance = (pev->origin - GetEntityOrigin(entity)).GetLength();
 	if (distance <= 120.0f)
@@ -80,8 +81,7 @@ float Bot::GetEntityDistance(edict_t* entity)
 		destIndex = m_currentWaypointIndex;
 	}
 
-	if (srcIndex < 0 || srcIndex >= g_numWaypoints || destIndex < 0 || destIndex >= g_numWaypoints ||
-		srcIndex == destIndex)
+	if (!IsValidWaypoint(srcIndex) || !IsValidWaypoint(destIndex < 0) || srcIndex == destIndex)
 		return distance;
 
 	Path* path = g_waypoint->GetPath(srcIndex);
@@ -1157,6 +1157,14 @@ void Bot::CombatFight(void)
 	if (FNullEnt(m_enemy))
 		return;
 
+	m_seeEnemyTime = engine->GetTime();
+
+	// SyPBM 1.56 - our last enemy can change teams in fun modes
+	if (!FNullEnt(m_enemy) && (FNullEnt(m_lastEnemy) || m_team == GetTeam(m_lastEnemy)))
+		SetLastEnemy(m_enemy);
+	else
+		SetLastEnemy(null);
+
 	// SyPB Pro P.47 - Attack Ai improve
 	if ((m_moveSpeed != 0.0f || m_strafeSpeed != 0.0f) && m_currentWaypointIndex != -1 && g_waypoint->GetPath(m_currentWaypointIndex)->flags & WAYPOINT_CROUCH && (pev->velocity.GetLength() < 2.0f))
 		pev->button |= IN_DUCK;
@@ -1204,7 +1212,7 @@ void Bot::CombatFight(void)
 
 				const float distance = (pev->origin - enemyOrigin).GetLength();
 
-				if (m_isSlowThink && distance <= 1024.0f && ChanceOf(30))
+				if (m_isSlowThink && distance <= 1024.0f && ChanceOf(sypbm_zp_use_grenade_percent.GetInt()))
 				{
 					if (engine->RandomInt(1, 2) == 1)
 						ThrowFrostNade();
@@ -1242,11 +1250,21 @@ void Bot::CombatFight(void)
 
 		return;
 	}
-	else if(!IsZombieMode())
+	else if(!IsZombieMode() && GetCurrentTask()->taskID != TASK_CAMP && GetCurrentTask()->taskID != TASK_SEEKCOVER && GetCurrentTask()->taskID != TASK_ESCAPEFROMBOMB)
 	{
+		if (m_isSlowThink && (m_isReloading || m_isUsingGrenade || (m_personality != PERSONALITY_RUSHER && ::IsInViewCone(pev->origin, m_enemy) && (pev->health + m_agressionLevel) < m_enemy->v.health + (m_personality == PERSONALITY_CAREFUL ? 15.0f : 30.0f))))
+		{
+			int seekindex = FindCoverWaypoint(9999.0f);
+
+			if (IsValidWaypoint(seekindex))
+				PushTask(TASK_SEEKCOVER, TASKPRI_SEEKCOVER, seekindex, 1.0f, false);
+
+			return;
+		}
+
 		DeleteSearchNodes();
 
-		m_lastEnemy = m_enemy;
+		SetLastEnemy(m_enemy);
 
 		m_destOrigin = GetEntityOrigin(m_enemy);
 
@@ -1304,23 +1322,26 @@ void Bot::CombatFight(void)
 			}
 			else if (UsesRifle() || UsesSubmachineGun())
 			{
-				if (m_lastFightStyleCheck + 3.0f < engine->GetTime())
+				if (m_lastFightStyleCheck + 0.5f < engine->GetTime())
 				{
-					if (distance < 450.0f)
-						m_fightStyle = 0;
-					else if (distance < 1024.0f)
+					if (ChanceOf(75))
 					{
-						if (ChanceOf(UsesSubmachineGun() ? 50 : 30))
+						if (distance < 450.0f)
 							m_fightStyle = 0;
+						else if (distance < 1024.0f)
+						{
+							if (ChanceOf(UsesSubmachineGun() ? 50 : 30))
+								m_fightStyle = 0;
+							else
+								m_fightStyle = 1;
+						}
 						else
-							m_fightStyle = 1;
-					}
-					else
-					{
-						if (ChanceOf(UsesSubmachineGun() ? 80 : 93))
-							m_fightStyle = 1;
-						else
-							m_fightStyle = 0;
+						{
+							if (ChanceOf(UsesSubmachineGun() ? 80 : 93))
+								m_fightStyle = 1;
+							else
+								m_fightStyle = 0;
+						}
 					}
 
 					m_lastFightStyleCheck = engine->GetTime();
@@ -1328,12 +1349,15 @@ void Bot::CombatFight(void)
 			}
 			else
 			{
-				if (m_lastFightStyleCheck + 3.0f < engine->GetTime())
+				if (m_lastFightStyleCheck + 0.5f < engine->GetTime())
 				{
-					if (ChanceOf(50))
-						m_fightStyle = 0;
-					else
-						m_fightStyle = 1;
+					if (ChanceOf(75))
+					{
+						if (ChanceOf(50))
+							m_fightStyle = 0;
+						else
+							m_fightStyle = 1;
+					}
 
 					m_lastFightStyleCheck = engine->GetTime();
 				}
@@ -1381,7 +1405,7 @@ void Bot::CombatFight(void)
 					}
 				}
 
-				if (m_jumpTime + 5.0f < engine->GetTime() && IsOnFloor() && ChanceOf(m_isReloading ? 7 : 2) && pev->velocity.GetLength2D() > float(m_skill + 50.0f) && !UsesSniper())
+				if (m_jumpTime + 5.0f < engine->GetTime() && IsOnFloor() && ChanceOf(m_isReloading ? 5 : 2) && pev->velocity.GetLength2D() > float(m_skill + 50.0f) && !UsesSniper())
 					pev->button |= IN_JUMP;
 
 				if (m_moveSpeed > 0.0f && distance > 100.0f && m_currentWeapon != WEAPON_KNIFE)
@@ -1569,7 +1593,8 @@ void Bot::SelectBestWeapon(void)
 	if (!m_isSlowThink)
 		return;
 
-	if (m_isZombieBot)
+	// SyPBM 1.56 - fix
+	if (m_isZombieBot && IsZombieMode())
 	{
 		SelectWeaponByName("weapon_knife");
 		return;

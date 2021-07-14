@@ -134,12 +134,24 @@ bool IsVisible(const Vector& origin, edict_t* ent)
 		return false;
 
 	TraceResult tr;
-	TraceLine(GetEntityOrigin(ent) + ent->v.view_ofs, origin, true, true, ent, &tr);
+	TraceLine(GetEntityOrigin(ent), origin, true, true, ent, &tr);
 
 	if (tr.flFraction != 1.0f)
 		return false; // line of sight is not established
 
 	return true; // line of sight is valid.
+}
+
+// SyPBM 1.56 - return walkable position on ground
+Vector GetWalkablePosition(const Vector& origin, edict_t* ent)
+{
+	TraceResult tr;
+	TraceLine(origin, Vector(origin.x, origin.y, -9999.0f), true, true, ent, &tr);
+
+	if (tr.flFraction != 1.0f)
+		return tr.vecEndPos; // walkable ground
+
+	return origin; // return original origin, we cant hit to ground
 }
 
 Vector GetEntityOrigin(edict_t* ent)
@@ -752,10 +764,11 @@ void AutoLoadGameMode(void)
 		"plugins-zplague",  // ZP4.3
 		"plugins-zp50_ammopacks", // ZP5.0
 		"plugins-zp50_money", // ZP5.0
-		"plugins-ze"
+		"plugins-ze",
+		"plugins-zp"
 	};
 
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < 5; i++)
 	{
 		Plugin_INI = FormatBuffer("%s/addons/amxmodx/configs/%s.ini", GetModName(), zpGameVersion[i]);
 		if (TryFileOpen(Plugin_INI))
@@ -779,12 +792,39 @@ void AutoLoadGameMode(void)
 		}
 	}
 
+	// ZP
+	char* bbVersion[] =
+	{
+		"plugins-basebuilder",
+		"plugins-bb"
+	};
+
+	for (int i = 0; i < 2; i++)
+	{
+		Plugin_INI = FormatBuffer("%s/addons/amxmodx/configs/%s.ini", GetModName(), bbVersion[i]);
+		if (TryFileOpen(Plugin_INI))
+		{
+			float delayTime = CVAR_GET_FLOAT("bb_buildtime") + CVAR_GET_FLOAT("bb_preptime") + 2.2f;
+
+			if (delayTime > 0)
+			{
+				if (checkShowTextTime < 3 || GetGameMod() != MODE_ZP)
+					ServerPrint("*** SyPBM Auto Game Mode Setting: Zombie Mode (ZP) ***");
+
+				SetGameMod(MODE_ZP);
+
+				g_DelayTimer = engine->GetTime() + delayTime;
+
+				goto lastly;
+			}
+		}
+	}
+
 	// DM:KD
 	Plugin_INI = FormatBuffer("%s/addons/amxmodx/configs/plugins-dmkd.ini", GetModName());
 	if (TryFileOpen(Plugin_INI))
 	{
-		if (CVAR_GET_FLOAT("HsK_Deathmatch_Plugin_load_SyPB") == 1 ||
-			CVAR_GET_FLOAT("DMKD_DMMODE") == 1)
+		if (CVAR_GET_FLOAT("HsK_Deathmatch_Plugin_load_SyPB") == 1 || CVAR_GET_FLOAT("DMKD_DMMODE") == 1)
 		{
 			if (checkShowTextTime < 3 || GetGameMod() != MODE_DM)
 				ServerPrint("*** SyPBM Auto Game Mode Setting: DM:KD-DM ***");
@@ -940,7 +980,7 @@ float Squared(float number)
 
 bool IsValidWaypoint(int index)
 {
-	if (index <= -1 || index > g_numWaypoints)
+	if (index < 0 || index > g_numWaypoints)
 		return false;
 
 	return true;
@@ -1168,11 +1208,11 @@ bool IsZombieEntity(edict_t* ent)
 		return (g_clients[playerId].isZombiePlayerAPI == 1) ? true : false;
 
 	// SyPB Pro P.38 - Knife Mode Use Zombie Ai
-	if (sypb_knifemode.GetBool() == true)
+	if (sypb_knifemode.GetBool())
 		return true;
 
 	// SyPB Pro P.12
-	if (GetGameMod() == MODE_ZP || GetGameMod() == MODE_ZH) // Zombie Mod
+	if (IsZombieMode()) // Zombie Mod
 		return (GetTeam(ent) == TEAM_TERRORIST);
 
 	return false;

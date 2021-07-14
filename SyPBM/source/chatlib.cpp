@@ -37,8 +37,8 @@ void StripTags(char* buffer)
     // this function strips 'clan' tags specified below in given string buffer
 
     // first three tags for Enhanced POD-Bot (e[POD], 3[POD], E[POD])
-    char* tagOpen[] = { "e[P", "3[P", "E[P", "-=", "-[", "-]", "-}", "-{", "<[", "<]", "[-", "]-", "{-", "}-", "[[", "[", "{", "]", "}", "<", ">", "-", "|", "=", "+" };
-    char* tagClose[] = { "]", "]", "]", "=-", "]-", "[-", "{-", "}-", "]>", "[>", "-]", "-[", "-}", "-{", "]]", "]", "}", "[", "{", ">", "<", "-", "|", "=", "+" };
+    char* tagOpen[] = {"e[P", "3[P", "E[P", "-=", "-[", "-]", "-}", "-{", "<[", "<]", "[-", "]-", "{-", "}-", "[[", "[", "{", "]", "}", "<", ">", "-", "|", "=", "+", "("};
+    char* tagClose[] = {"]", "]", "]", "=-", "]-", "[-", "{-", "}-", "]>", "[>", "-]", "-[", "-}", "-{", "]]", "]", "}", "[", "{", ">", "<", "-", "|", "=", "+", ")"};
 
     int index, fieldStart, fieldStop, i;
     int length = strlen(buffer); // get length of string
@@ -99,7 +99,6 @@ void StripTags(char* buffer)
             }
         }
     }
-
     strtrim(buffer); // to finish, strip eventual blanks after and before the tag marks
 }
 
@@ -123,7 +122,6 @@ char* HumanizeName(char* name)
         for (int i = 0; i < static_cast <int> (strlen(outputName)); i++)
             outputName[i] = static_cast <char> (tolower(outputName[i])); // to lower case
     }
-
     return &outputName[0]; // return terminated string
 }
 
@@ -166,7 +164,6 @@ void HumanizeChat(char* buffer)
             buffer[pos + 1] = ch;
         }
     }
-
     buffer[length] = 0; // terminate string
 }
 
@@ -174,7 +171,7 @@ void Bot::PrepareChatMessage(char* text)
 {
     // this function parses messages from the botchat, replaces keywords and converts names into a more human style
 
-    if (!sypbm_chat.GetInt() == 0 || IsNullString(text))
+    if (!sypbm_chat.GetBool() || IsNullString(text))
         return;
 
     memset(&m_tempStrings, 0, sizeof(m_tempStrings));
@@ -363,7 +360,7 @@ bool CheckKeywords(char* tempMessage, char* reply)
 {
     // this function checks is string contain keyword, and generates relpy to it
 
-    if (sypbm_chat.GetInt() == 0 || IsNullString(tempMessage))
+    if (!sypbm_chat.GetBool() || IsNullString(tempMessage))
         return false;
 
     ITERATE_ARRAY(g_replyFactory, i)
@@ -447,7 +444,6 @@ bool Bot::RepliesToPlayer(void)
             m_sayTextBuffer.sayText[0] = 0x0;
         }
     }
-
     return false;
 }
 
