@@ -3,13 +3,10 @@ SyPB Modification is based on SyPB 1.48, in SyPB 1.49 - 1.50 versions has a cras
 
 The Developer of the SyPB doesn't have time for develop anymore, original project is so large.
 
-# Last SyPBM changes
-- AS_ maps crash fix
-- Now waypoint radius is now squared
-- Optimizated code
-- Some reworks
-- Now survivor bots never try pickup weapons in ZP
+Also this version has a waypoint analyzer, basic waypoint generator for maps.
+Made for who one don't know how to make waypoints.
 
+(But, on some analyzed maps like cs_assault, bots can move to wrong directions, but maps like dust2 or de_dust2020 working fine. game modes doesn't matter)
 
 # How to install
 1. You must have original sypb & metamod (not required for sypbm 1.53 and higher versions).
