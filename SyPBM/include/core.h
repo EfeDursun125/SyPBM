@@ -370,7 +370,8 @@ enum MapType
 	MAP_ES = (1 << 3),
 	MAP_KA = (1 << 4),
 	MAP_FY = (1 << 5),
-	MAP_AWP = (1 << 6)
+	MAP_AWP = (1 << 6),
+	MAP_HE = (1 << 7)
 };
 
 // defines for waypoint flags field (32 bits are available)
@@ -1489,7 +1490,8 @@ extern bool IsDeathmatchMode(void);
 extern bool IsValidWaypoint(int index);
 extern bool ChanceOf(int number);
 extern float Squared(float number);
-extern float GetDistanceSquared(Vector a);
+extern float GetDistance(Vector a, Vector b);
+extern float GetDistanceSquared(Vector a, Vector b);
 
 extern int GetEntityWaypoint(edict_t* ent);
 extern int SetEntityWaypoint(edict_t* ent, int mode = -1);
@@ -1501,6 +1503,7 @@ extern bool TryFileOpen(char* fileName);
 extern bool IsDedicatedServer(void);
 extern bool IsVisible(const Vector& origin, edict_t* ent);
 extern Vector GetWalkablePosition(const Vector& origin, edict_t* ent = null);
+extern Vector GetNearestWalkablePosition(const Vector& origin, edict_t* ent = null);
 extern bool IsAlive(edict_t* ent);
 extern bool IsInViewCone(Vector origin, edict_t* ent);
 extern bool IsWeaponShootingThroughWall(int id);
