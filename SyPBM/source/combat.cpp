@@ -25,7 +25,7 @@
 #include <core.h>
 
 ConVar sypbm_escape("sypbm_zombie_escape_mode", "0");
-ConVar sypbm_zp_use_grenade_percent("sypbm_zp_use_grenade_percent", "10");
+ConVar sypbm_zp_use_grenade_percent("sypbm_zp_use_grenade_percent", "40");
 
 int Bot::GetNearbyFriendsNearPosition(Vector origin, int radius)
 {
@@ -36,7 +36,7 @@ int Bot::GetNearbyFriendsNearPosition(Vector origin, int radius)
 		if (!(client.flags & CFLAG_USED) || !(client.flags & CFLAG_ALIVE) || client.team != m_team || client.ent == GetEntity())
 			continue;
 
-		if ((client.origin - origin).GetLength() < float(radius))
+		if (GetDistance(client.origin, origin) < float(radius))
 			count++;
 	}
 
@@ -52,7 +52,7 @@ int Bot::GetNearbyEnemiesNearPosition(Vector origin, int radius)
 		if (!(client.flags & CFLAG_USED) || !(client.flags & CFLAG_ALIVE) || client.team == m_team)
 			continue;
 
-		if ((client.origin - origin).GetLength() < float(radius))
+		if (GetDistance(client.origin, origin) < float(radius))
 			count++;
 	}
 
@@ -65,7 +65,7 @@ float Bot::GetEntityDistance(edict_t* entity)
 	if (FNullEnt(entity))
 		return 9999.0f;
 
-	float distance = (pev->origin - GetEntityOrigin(entity)).GetLength();
+	float distance = GetDistance(pev->origin, GetEntityOrigin(entity));
 	if (distance <= 120.0f)
 		return distance;
 
@@ -250,8 +250,7 @@ bool Bot::LookupEnemy(void)
 
 				if (m_allEnemyDistance[i] == m_enemyEntityDistance[y])
 				{
-					if ((pev->origin - GetEntityOrigin(INDEXENT(m_allEnemyId[i])).GetLength()) >
-						(pev->origin - GetEntityOrigin(INDEXENT(m_enemyEntityId[y])).GetLength()))
+					if ((pev->origin - GetEntityOrigin(INDEXENT(m_allEnemyId[i])).GetLength()) > (pev->origin - GetEntityOrigin(INDEXENT(m_enemyEntityId[y])).GetLength()))
 						continue;
 				}
 
@@ -513,8 +512,7 @@ Vector Bot::GetAimPosition(void)
 
 	if ((m_visibility & (VISIBILITY_HEAD | VISIBILITY_BODY)))
 	{
-		if (GetGameMod() == MODE_ZP || ((m_skill >= 80 || m_skill >= engine->RandomInt(0, 100)) &&
-			(m_currentWeapon != WEAPON_AWP || m_enemy->v.health > 100)))
+		if (GetGameMod() == MODE_ZP || ((m_skill >= 80 || m_skill >= engine->RandomInt(0, 100)) && (m_currentWeapon != WEAPON_AWP || m_enemy->v.health >= 100)))
 			enemyOrigin = GetPlayerHeadOrigin(m_enemy);
 	}
 	else if (m_visibility & VISIBILITY_HEAD)
@@ -524,7 +522,7 @@ Vector Bot::GetAimPosition(void)
 	else
 		enemyOrigin = m_lastEnemyOrigin;
 
-	if ((GetGameMod() == MODE_BASE || GetGameMod() == 1) && m_skill <= engine->RandomInt(30, 60))
+	if ((GetGameMod() == MODE_BASE || IsDeathmatchMode()) && m_skill <= engine->RandomInt(30, 60))
 	{
 		enemyOrigin.x += engine->RandomFloat(m_enemy->v.mins.x, m_enemy->v.maxs.x);
 		enemyOrigin.y += engine->RandomFloat(m_enemy->v.mins.y, m_enemy->v.maxs.y);
@@ -1155,7 +1153,13 @@ void Bot::FocusEnemy(void)
 void Bot::CombatFight(void)
 {
 	if (FNullEnt(m_enemy))
+	{
+		// if we can see our last enemy, attack last enemy
+		if (!FNullEnt(m_lastEnemy) && IsVisible(GetPlayerHeadOrigin(m_lastEnemy), GetEntity()) && m_team != GetTeam(m_lastEnemy))
+			m_enemy = m_lastEnemy;
+
 		return;
+	}
 
 	m_seeEnemyTime = engine->GetTime();
 
@@ -1166,7 +1170,7 @@ void Bot::CombatFight(void)
 		SetLastEnemy(null);
 
 	// SyPB Pro P.47 - Attack Ai improve
-	if ((m_moveSpeed != 0.0f || m_strafeSpeed != 0.0f) && m_currentWaypointIndex != -1 && g_waypoint->GetPath(m_currentWaypointIndex)->flags & WAYPOINT_CROUCH && (pev->velocity.GetLength() < 2.0f))
+	if ((m_moveSpeed != 0.0f || m_strafeSpeed != 0.0f) && IsValidWaypoint(m_currentWaypointIndex) && g_waypoint->GetPath(m_currentWaypointIndex)->flags & WAYPOINT_CROUCH && (pev->velocity.GetLength() < 2.0f))
 		pev->button |= IN_DUCK;
 
 	// SyPBM 1.53 AI improve
@@ -1192,27 +1196,21 @@ void Bot::CombatFight(void)
 
 			const bool NPCEnemy = !IsValidPlayer(m_enemy);
 			const bool enemyIsZombie = IsZombieEntity(m_enemy);
-			float baseDistance = 600.0f;
+			float baseDistance = (fabsf(m_enemy->v.speed) + 400.0f);
 
 			if (NPCEnemy || enemyIsZombie)
 			{
 				if (m_currentWeapon == WEAPON_KNIFE)
 				{
 					if (::IsInViewCone(pev->origin, m_enemy) && !NPCEnemy)
-						baseDistance = 450.0f;
+						baseDistance = (fabsf(m_enemy->v.speed) + 400.0f);
 					else
 						baseDistance = -1.0f;
 				}
-				else if (UsesSniper() || m_isReloading)
-					baseDistance = 450.0f;
-				else if (m_currentWeapon == WEAPON_XM1014 || m_currentWeapon == WEAPON_M3)
-					baseDistance = 250.0f;
-				else
-					baseDistance = 350.0f;
 
 				const float distance = (pev->origin - enemyOrigin).GetLength();
 
-				if (m_isSlowThink && distance <= 1024.0f && ChanceOf(sypbm_zp_use_grenade_percent.GetInt()))
+				if (m_isSlowThink && distance <= 1024.0f && engine->RandomInt(1, 1000) <= sypbm_zp_use_grenade_percent.GetInt())
 				{
 					if (engine->RandomInt(1, 2) == 1)
 						ThrowFrostNade();
@@ -1223,7 +1221,7 @@ void Bot::CombatFight(void)
 				if (baseDistance != -1.0f)
 				{
 					// SyPBM 1.52 - better human escape ai
-					if ((sypbm_escape.GetInt() == 0 && distance <= baseDistance) || (sypbm_escape.GetInt() != 0 && distance <= float(m_enemy->v.speed / 2) && ::IsInViewCone(pev->origin, m_enemy)))
+					if (sypbm_escape.GetInt() == 0 && distance <= baseDistance)
 					{
 						m_destOrigin = GetEntityOrigin(m_enemy); //g_waypoint->GetPath(g_waypoint->FindSafestForHuman(m_enemy, GetEntity(), 768.0f))->origin;
 						m_moveSpeed = -pev->maxspeed;

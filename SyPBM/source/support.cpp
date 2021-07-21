@@ -154,6 +154,42 @@ Vector GetWalkablePosition(const Vector& origin, edict_t* ent)
 	return origin; // return original origin, we cant hit to ground
 }
 
+// SyPBM 1.57 - same with GetWalkablePosition but gets nearest walkable position
+Vector GetNearestWalkablePosition(const Vector& origin, edict_t* ent)
+{
+	TraceResult tr;
+	TraceLine(origin, Vector(origin.x, origin.y, -9999.0f), true, true, ent, &tr);
+
+	Vector BestOrigin = origin;
+
+	Vector FirstOrigin;
+	Vector SecondOrigin;
+
+	if (tr.flFraction != 1.0f)
+		FirstOrigin = tr.vecEndPos; // walkable ground rigth?
+	else
+		FirstOrigin = nullvec;
+
+	if (g_numWaypoints > 0)
+		SecondOrigin = g_waypoint->GetPath(g_waypoint->FindNearest(origin))->origin; // get nearest waypoint for walk
+	else
+		SecondOrigin = nullvec;
+
+	if (FirstOrigin == nullvec)
+		BestOrigin = SecondOrigin;
+	else if (SecondOrigin == nullvec)
+		BestOrigin = FirstOrigin;
+	else
+	{
+		if ((origin - FirstOrigin).GetLength() < (origin - SecondOrigin).GetLength())
+			BestOrigin = FirstOrigin;
+		else
+			BestOrigin = SecondOrigin;
+	}
+
+	return BestOrigin;
+}
+
 Vector GetEntityOrigin(edict_t* ent)
 {
 	// this expanded function returns the vector origin of a bounded entity, assuming that any
@@ -765,15 +801,17 @@ void AutoLoadGameMode(void)
 		"plugins-zp50_ammopacks", // ZP5.0
 		"plugins-zp50_money", // ZP5.0
 		"plugins-ze",
-		"plugins-zp"
+		"plugins-zp",
+		"plugins-zescape"
 	};
 
-	for (int i = 0; i < 5; i++)
+	for (int i = 0; i < 6; i++)
 	{
 		Plugin_INI = FormatBuffer("%s/addons/amxmodx/configs/%s.ini", GetModName(), zpGameVersion[i]);
 		if (TryFileOpen(Plugin_INI))
 		{
 			float delayTime = CVAR_GET_FLOAT("zp_delay") + 2.2f;
+
 			if (i != 0)
 				delayTime = CVAR_GET_FLOAT("zp_gamemode_delay") + 0.2f;
 
@@ -792,7 +830,7 @@ void AutoLoadGameMode(void)
 		}
 	}
 
-	// ZP
+	// BB
 	char* bbVersion[] =
 	{
 		"plugins-basebuilder",
@@ -968,9 +1006,22 @@ bool ChanceOf(int number)
 	return engine->RandomInt(1, 100) <= number;
 }
 
-float GetDistanceSquared(Vector a)
+float GetDistance(Vector a, Vector b)
 {
-	return (a.x * a.x) + (a.y * a.y) + (a.z * a.z);
+	float dx = a.x - b.x;
+	float dy = a.y - b.y;
+	float dz = a.z - b.z;
+
+	return dx + dy + dz;
+}
+
+float GetDistanceSquared(Vector a, Vector b)
+{
+	float dx = a.x - b.x;
+	float dy = a.y - b.y;
+	float dz = a.z - b.z;
+
+	return (dx * dx) + (dy * dy) + (dz * dz);
 }
 
 float Squared(float number)

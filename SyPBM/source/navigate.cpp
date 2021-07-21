@@ -27,7 +27,6 @@
 ConVar sypb_dangerfactor_min("sypbm_dangerfactor_min", "600");
 ConVar sypb_dangerfactor_max("sypbm_dangerfactor_max", "1000");
 ConVar sypbm_aimbot("sypbm_aimbot", "0");
-ConVar sypbm_max_angular_vel("sypbm_max_angular_vel", "512");
 ConVar sypbm_aiming_type("sypbm_aiming_type", "1");
 
 extern ConVar sypbm_anti_block;
@@ -312,7 +311,7 @@ TacticChoosen:
 		{
 			int closest = g_waypoint->m_goalPoints[i];
 
-			if ((pev->origin - g_waypoint->GetPath(closest)->origin).GetLength() < 1000 && !IsGroupOfEnemies(g_waypoint->GetPath(closest)->origin))
+			if (GetDistance(pev->origin, g_waypoint->GetPath(closest)->origin) <= 1024 && !IsGroupOfEnemies(g_waypoint->GetPath(closest)->origin))
 			{
 				closer = true;
 				goalChoices[closerIndex] = closest;
@@ -335,40 +334,12 @@ TacticChoosen:
 		else if (m_isBomber)
 			return m_chosenGoalIndex = goalChoices[engine->RandomInt(0, closerIndex - 1)];
 	}
-
-	// SyPB Pro P.30 - Zombie Mode Human Camp
 	else if (tactic == 4 && !offensiveWpts.IsEmpty()) // offensive goal
 	{
-		int playerWpIndex = GetEntityWaypoint(GetEntity());
+		int wpIndex = offensiveWpts.GetRandomElement();
 
-		int targetWpIndex = -1;
-		float distance = 9999.9f;
-
-		for (int i = 0; i <= offensiveWpts.GetElementNumber(); i++)
-		{
-			int wpIndex;
-			offensiveWpts.GetAt(i, wpIndex);
-			if (IsValidWaypoint(wpIndex))
-			{
-				// SyPB Pro P.42 - Zombie Mode Human Camp improve
-				if (GetNearbyEnemiesNearPosition(g_waypoint->GetPath(wpIndex)->origin, 512) >= 3)
-					continue;
-
-				float theDistance = (pev->origin - g_waypoint->GetPath(wpIndex)->origin).GetLength();
-
-				if (IsValidWaypoint(playerWpIndex))
-					theDistance = g_waypoint->GetPathDistanceFloat(playerWpIndex, wpIndex);
-
-				if (theDistance < distance)
-				{
-					distance = theDistance;
-					targetWpIndex = wpIndex;
-				}
-			}
-		}
-
-		if (IsValidWaypoint(targetWpIndex))
-			return m_chosenGoalIndex = targetWpIndex;
+		if (IsValidWaypoint(wpIndex))
+			return m_chosenGoalIndex = wpIndex;
 	}
 
 	if (!IsValidWaypoint(m_currentWaypointIndex < 0))
@@ -476,9 +447,12 @@ bool Bot::DoWaypointNav(void)
 		m_navTimeset = engine->GetTime();
 	}
 
-	m_destOrigin = m_waypointOrigin + pev->view_ofs + (g_pGlobals->v_forward * 4);
+	if (pev->flags & FL_DUCKING || m_isStuck)
+		m_destOrigin = m_waypointOrigin;
+	else
+		m_destOrigin = m_waypointOrigin + pev->view_ofs;
 
-	float waypointDistance = GetDistanceSquared(pev->origin - m_waypointOrigin);
+	float waypointDistance = GetDistanceSquared(pev->origin, m_waypointOrigin);
 
 	// this waypoint has additional travel flags - care about them
 	if (m_currentTravelFlags & PATHFLAG_JUMP)
@@ -621,7 +595,7 @@ bool Bot::DoWaypointNav(void)
 	{
 		Vector nextFrameOrigin = pev->origin + (pev->velocity * m_frameInterval);
 
-		if (GetDistanceSquared(nextFrameOrigin - m_waypointOrigin) >= waypointDistance)
+		if (GetDistanceSquared(nextFrameOrigin, m_waypointOrigin) >= waypointDistance)
 			desiredDistance = waypointDistance + 1.0f;
 	}
 
@@ -629,7 +603,7 @@ bool Bot::DoWaypointNav(void)
 	if (IsValidWaypoint(m_waypointGoalAPI) && m_currentWaypointIndex == m_waypointGoalAPI)
 		m_waypointGoalAPI = -1;
 
-	if (IsVisible(m_waypointOrigin, GetEntity()) && GetDistanceSquared(pev->origin - m_waypointOrigin) < Squared(desiredDistance))
+	if (IsVisible(m_waypointOrigin, GetEntity()) && GetDistanceSquared(pev->origin, m_waypointOrigin) < Squared(desiredDistance))
 	{
 		// Did we reach a destination Waypoint?
 		if (GetCurrentTask()->data == m_currentWaypointIndex)
@@ -661,7 +635,7 @@ bool Bot::DoWaypointNav(void)
 
 		if (m_navNode == null || m_navNode->next != null && (g_waypoint->Reachable(GetEntity(), m_navNode->next->index) || (g_waypoint->GetPath(m_currentWaypointIndex)->radius > 48.0f && m_navNode->next != null && IsVisible(g_waypoint->GetPath(m_navNode->next->index)->origin, GetEntity()))))
 			HeadTowardWaypoint(); // do the actual movement checking
-		else if (GetDistanceSquared(pev->origin - m_waypointOrigin) < Squared(m_isStuck ? 24.0f : 4.0f))
+		else if (GetDistanceSquared(pev->origin, m_waypointOrigin) < Squared(m_isStuck ? 24.0f : 4.0f))
 			HeadTowardWaypoint(); // do the actual movement checking
 
 		return false;
@@ -673,7 +647,7 @@ bool Bot::DoWaypointNav(void)
 		if (m_navNode == null || m_navNode->next != null && (g_waypoint->Reachable(GetEntity(), m_navNode->next->index)))
 			HeadTowardWaypoint();
 	}
-	else if(m_navNode == null || m_navNode->next != null && !IsVisible(m_destOrigin, GetEntity()) && IsVisible(g_waypoint->GetPath(m_navNode->next->index)->origin, GetEntity()))
+	else if (m_navNode == null || m_navNode->next != null && !IsVisible(m_destOrigin, GetEntity()) && IsVisible(g_waypoint->GetPath(m_navNode->next->index)->origin, GetEntity()))
 		HeadTowardWaypoint();
 
 	return false;
@@ -1238,7 +1212,7 @@ inline const float GF_CostZBNormal(int index, int parent, int team, float offset
 		if (!(client.flags & CFLAG_USED) || !(client.flags & CFLAG_ALIVE))
 			continue;
 
-		if (GetDistanceSquared(client.origin - g_waypoint->GetPath(index)->origin) < Squared(75))
+		if (GetDistanceSquared(client.origin, g_waypoint->GetPath(index)->origin) < Squared(75))
 			count++;
 
 		baseCost += pathDist * (count * count);
@@ -1295,7 +1269,7 @@ inline const float GF_CostZBRusher(int index, int parent, int team, float offset
 		if (!(client.flags & CFLAG_USED) || !(client.flags & CFLAG_ALIVE))
 			continue;
 
-		if (GetDistanceSquared(client.origin - g_waypoint->GetPath(index)->origin) < Squared(75))
+		if (GetDistanceSquared(client.origin, g_waypoint->GetPath(index)->origin) < Squared(75))
 			count++;
 
 		baseCost += pathDist * (count * count);
@@ -1363,7 +1337,7 @@ inline const float GF_CostZBCareful(int index, int parent, int team, float offse
 		if (!(client.flags & CFLAG_USED) || !(client.flags & CFLAG_ALIVE))
 			continue;
 
-		if (GetDistanceSquared(client.origin - g_waypoint->GetPath(index)->origin) < Squared(75))
+		if (GetDistanceSquared(client.origin, g_waypoint->GetPath(index)->origin) < Squared(75))
 			count++;
 
 		baseCost += pathDist * (count * count);
@@ -1424,7 +1398,7 @@ inline const float GF_CostHM(int index, int parent, int team, float offset)
 		if (!(client.flags & CFLAG_USED) || !(client.flags & CFLAG_ALIVE))
 			continue;
 
-		if (GetDistanceSquared(client.origin - g_waypoint->GetPath(index)->origin) < Squared(75))
+		if (GetDistanceSquared(client.origin, g_waypoint->GetPath(index)->origin) < Squared(75))
 			count++;
 
 		baseCost += pathDist * (count * count);
@@ -2040,7 +2014,7 @@ void Bot::IgnoreCollisionShortly(void)
 {
 	ResetCollideState();
 
-	m_lastCollTime = engine->GetTime() + 0.35f;
+	m_lastCollTime = engine->GetTime() + 1.0f;
 	m_isStuck = false;
 	m_checkTerrain = false;
 }
@@ -2071,7 +2045,7 @@ void Bot::SetWaypointOrigin(void)
 			for (int i = 0; i < 5; i++)
 			{
 				// SyPB Pro P.42 - Small Waypoint OS improve
-				float distance = (pev->origin - waypointOrigin[i]).GetLength2D() + (waypointOrigin[i] - g_waypoint->GetPath(destIndex)->origin).GetLength2D();
+				float distance = GetDistance(pev->origin, waypointOrigin[i]) + GetDistance(waypointOrigin[i], g_waypoint->GetPath(destIndex)->origin);
 
 				if (distance < sDistance)
 				{
@@ -2088,7 +2062,7 @@ void Bot::SetWaypointOrigin(void)
 			}
 		}
 
-		m_waypointOrigin = m_waypointOrigin + g_pGlobals->v_forward * engine->RandomFloat(0, radius);
+		m_waypointOrigin = m_waypointOrigin + g_pGlobals->v_forward * radius;
 	}
 }
 
@@ -2176,7 +2150,7 @@ int Bot::ChooseBombWaypoint(void)
 	// find nearest goal waypoint either to bomb (if "heard" or player)
 	ITERATE_ARRAY(g_waypoint->m_goalPoints, i)
 	{
-		float distance = (g_waypoint->GetPath(g_waypoint->m_goalPoints[i])->origin - bombOrigin).GetLength();
+		float distance = GetDistance(g_waypoint->GetPath(g_waypoint->m_goalPoints[i])->origin, bombOrigin);
 
 		// check if we got more close distance
 		if (distance < lastDistance)
@@ -2233,7 +2207,7 @@ int Bot::FindDefendWaypoint(Vector origin)
 
 		if (tr.flFraction == 1.0f && !IsWaypointOccupied(index)) // distance isn't matter
 			BestSpots.Push(index);
-		else if (GetDistanceSquared(g_waypoint->GetPath(index)->origin - origin) <= Squared(1024.0f) && !IsWaypointOccupied(index))
+		else if (GetDistanceSquared(g_waypoint->GetPath(index)->origin, origin) <= Squared(1024.0f) && !IsWaypointOccupied(index))
 			OkSpots.Push(index);
 		else if (!IsWaypointOccupied(index))
 			WorstSpots.Push(index);
@@ -2283,7 +2257,7 @@ int Bot::FindCoverWaypoint(float maxDistance)
 
 		TraceLine(g_waypoint->GetPath(i)->origin, origin, true, true, GetEntity(), &tr);
 
-		if (tr.flFraction != 1.0f && !IsWaypointOccupied(i) && GetDistanceSquared(g_waypoint->GetPath(i)->origin - origin) <= Squared(maxDistance))
+		if (tr.flFraction != 1.0f && !IsWaypointOccupied(i) && GetDistanceSquared(g_waypoint->GetPath(i)->origin, origin) <= Squared(maxDistance))
 			BestSpots.Push(i);
 		else if (tr.flFraction != 1.0f && !IsWaypointOccupied(i)) // distance isn't matter now
 			OkSpots.Push(i);
@@ -2504,7 +2478,7 @@ bool Bot::HeadTowardWaypoint(void)
 								{
 									Vector wpOrigin = g_waypoint->GetPath(destIndex)->origin;
 
-									if (GetDistanceSquared(otherBot->pev->origin - wpOrigin) <= GetDistanceSquared(pev->origin - wpOrigin))
+									if (GetDistanceSquared(otherBot->pev->origin, wpOrigin) <= GetDistanceSquared(pev->origin, wpOrigin))
 									{
 										waitTime = 1.0f;
 										break;
@@ -2852,7 +2826,7 @@ bool Bot::IsDeadlyDrop(Vector targetOriginPos)
 	float height;
 	float lastHeight = tr.flFraction * 1000.0f;  // height from ground
 
-	float distance = GetDistanceSquared(targetOriginPos - check);  // distance from goal
+	float distance = GetDistanceSquared(targetOriginPos, check);  // distance from goal
 
 	while (distance > 16.0f)
 	{
@@ -2872,7 +2846,7 @@ bool Bot::IsDeadlyDrop(Vector targetOriginPos)
 			return true;
 
 		lastHeight = height;
-		distance = GetDistanceSquared(targetOriginPos - check);  // distance from goal
+		distance = GetDistanceSquared(targetOriginPos, check);  // distance from goal
 	}
 	return false;
 }
@@ -3195,7 +3169,7 @@ bool Bot::IsWaypointUsed(int index)
 		if (client.ent == GetEntity())
 			continue;
 
-		if (GetDistanceSquared(g_waypoint->GetPath(index)->origin - GetEntityOrigin(client.ent)) < Squared(75.0f))
+		if (GetDistanceSquared(g_waypoint->GetPath(index)->origin, GetEntityOrigin(client.ent)) <= Squared(75.0f))
 			return true;
 
 		Bot* bot = g_botManager->GetBot(client.ent);
@@ -3225,7 +3199,7 @@ bool Bot::IsWaypointOccupied(int index)
 			int occupyId = GetShootingConeDeviation(GetEntity(), &pev->origin) >= 0.7f ? m_prevWptIndex[0] : m_currentWaypointIndex;
 
 			// length check
-			float length = GetDistanceSquared(g_waypoint->GetPath(occupyId)->origin - g_waypoint->GetPath(index)->origin);
+			float length = GetDistanceSquared(g_waypoint->GetPath(occupyId)->origin, g_waypoint->GetPath(index)->origin);
 
 			if (occupyId == index || GetCurrentTask()->data == index || length < Squared(64.0f))
 				return true;

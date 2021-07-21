@@ -1243,6 +1243,8 @@ int Spawn(edict_t* ent)
 		g_mapType |= MAP_KA;
 	else if (strncmp(GetMapName(), "awp_", 4) == 0) // SyPB Pro P.32 - AWP MAP TYPE
 		g_mapType |= MAP_AWP;
+	else if (strncmp(GetMapName(), "he_", 4) == 0) // SyPBM 1.57 - grenade wars
+		g_mapType |= MAP_HE;
 
 	if (g_isMetamod)
 		RETURN_META_VALUE(MRES_IGNORED, 0);
