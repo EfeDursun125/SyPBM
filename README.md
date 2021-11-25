@@ -34,6 +34,4 @@ SwNPC - Lastly Version: Beta 1.48 (Build: 1.48.50576.121)
 SyPB AMXX API - Lastly Version: 1.48 (Build: 1.48.50576.49)
  - SyPB AMXX API
 
-! Windows Only !
-
 Download or more pls visit: http://ccnhsk-dev.blogspot.hk/
