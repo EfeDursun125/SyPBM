@@ -1,4 +1,4 @@
-# About The Project (Do not will be updated anymore!)
+# About The Project (Do not will be updated anymore!) ![GitHub all releases](https://img.shields.io/github/downloads/EfeDursun125/SyPBM/total)
 SyPB Modification is based on SyPB 1.48, in SyPB 1.49 - 1.50 versions has a crash problem.
 
 The Developer of the SyPB doesn't have time for develop anymore, original project is so large.
